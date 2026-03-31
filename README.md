@@ -1,17 +1,45 @@
-# mosquitos_app
+## Mosquitos App – Terrain & avaloirs
 
-A new Flutter project.
+Application mobile Flutter développée pour le hackathon « cartographie et traitement des avaloirs ».
 
-## Getting Started
+Backend associé : [`les-mosquitos`](https://github.com/romain-sadar/les-mosquitos).
 
-This project is a starting point for a Flutter application.
+### 1. Fonctionnalités retenues (MVP)
 
-A few resources to get you started if this is your first Flutter project:
+2.1 **Authentification simple** : connexion via identifiant / mot de passe pour accéder aux parcours et aux données terrain.  
+2.2 **Liste des cartographies existantes** : affichage des parcours déjà créés avec nom, date de création et nombre de points traités / restants.  
+2.3 **Carte globale interactive** : affichage des points enregistrés avec code couleur selon leur état (traité, à traiter, à vérifier).  
+2.4 **Consultation d’un point** : ouverture d’une fiche contenant photo, dernier traitement, étiquette, commentaire et accès à l’historique.  
+2.5 **Ajout d’un point** : création d’un point depuis la carte avec nom, étiquette, commentaire et photo.  
+2.6 **Marquage d’un point comme traité** : mise à jour rapide du statut d’un point depuis sa fiche.  
+2.7 **Historique d’un point** : consultation chronologique des interventions précédentes avec date, auteur et état enregistré.  
+2.8 **Création d’un parcours / mission** : génération d’une mission contenant un ensemble de points à traiter.  
+2.9 **Affichage d’un tracé** : visualisation d’un itinéraire reliant les points d’une mission.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+### 2. Fonctionnalités prévues côté app
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- **Authentification** auprès du backend Django.
+- **Cartographie terrain** :
+  - Afficher les points (avaloirs, trappes, etc.) sur une carte (Mapbox).
+  - Ajouter de nouveaux points avec position GPS, étiquette, commentaire, photos.
+- **Parcours de traitement** :
+  - Lister les tournées de traitement générées par le backend.
+  - Afficher l’ordre de passage et permettre à l’agent de marquer les points comme traités.
+- **Historique** :
+  - Afficher l’historique des interventions et l’activité utilisateur.
+
+### 3. Stack technique
+
+- **Framework** : Flutter
+- **Langage** : Dart
+- **Plateformes** : Android (et éventuellement Web / Desktop pour la démo)
+- **API backend** : Django REST (`les-mosquitos`)
+
+### 4. Démarrage
+
+Depuis la racine du projet :
+
+```bash
+cd mosquitos_app      # ou les-mosquitos-app
+flutter pub get
+flutter run
