@@ -34,21 +34,32 @@ Backend associé : `[les-mosquitos](https://github.com/romain-sadar/les-mosquito
 - **Langage** : Dart
 - **Plateformes** : Android (et éventuellement Web / Desktop pour la démo)
 - **API backend** : Django REST (`les-mosquitos`)
-- **Cartographie** : Mapbox (token public à renseigner dans `android/app/src/main/res/values/secrets.xml`)
+- **Cartographie** : Mapbox (token public géré côté Dart dans `lib/config/mapbox_config.local.dart`)
 
-### 4. Démarrage
+### 4. Démarrage (pour un·e nouveau·elle dev)
 
-Depuis la racine du projet :
+Depuis la racine du dépôt hackathon :
 
 ```bash
 cd mosquitos_app
 flutter pub get
-flutter run
 ```
 
-Dans `/app/src/main/res/values/secrets.xml` : 
-```xml
-<resources>
-    <string name="mapbox_access_token">pk.XXXXX</string>
-</resources>
-```
+Ensuite :
+
+1. **Créer le fichier de config Mapbox local** (`lib/config/mapbox_config.local.dart`) :
+
+   ```dart
+   class MapboxConfig {
+     static const token = 'pk.VOTRE_TOKEN_PUBLIC_ICI';
+   }
+   ```
+
+2. **Lancer l’app sur un device Android** :
+
+   ```bash
+   flutter run -d <id_appareil_android>
+   ```
+
+   (Vérifier que le mode développeur + débogage USB sont activés sur le téléphone.)
+
