@@ -36,7 +36,15 @@ Backend associé : `[les-mosquitos](https://github.com/romain-sadar/les-mosquito
 - **API backend** : Django REST (`les-mosquitos`)
 - **Cartographie** : Mapbox (token public géré côté Dart dans `lib/config/mapbox_config.local.dart`)
 
-### 4. Démarrage (pour un·e nouveau·elle dev)
+### 4. Structure du projet (Flutter)
+
+- `lib/main.dart` : point d’entrée de l’app, configuration du thème et navigation initiale.
+- `lib/config/` : configuration (ex. `mapbox_config.dart`).
+- `lib/theme/` : thèmes partagés (ex. `app_colors.dart` avec les couleurs Figma).
+- `lib/features/auth/presentation/login_page.dart` : vue de **login** (écran maquette Figma).
+- `lib/features/map/presentation/map_page.dart` : vue **carte Mapbox** affichée après login.
+
+### 5. Démarrage (pour un·e nouveau·elle dev)
 
 Depuis la racine du dépôt hackathon :
 
@@ -62,4 +70,5 @@ Ensuite :
    ```
 
    (Vérifier que le mode développeur + débogage USB sont activés sur le téléphone.)
+
 
