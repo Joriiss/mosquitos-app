@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'config/mapbox_config.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
+  MapboxOptions.setAccessToken(MapboxConfig.token);
   runApp(const MyApp());
 }
 
