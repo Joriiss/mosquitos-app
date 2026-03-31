@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_colors.dart';
-import '../../map/presentation/map_page.dart';
+import '../../parcours/presentation/parcours_list_page.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -128,7 +128,7 @@ class LoginPage extends StatelessWidget {
                     onPressed: () {
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
-                          builder: (_) => const MapPage(),
+                          builder: (_) => const ParcoursListPage(),
                         ),
                       );
                     },

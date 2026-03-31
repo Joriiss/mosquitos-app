@@ -57,6 +57,7 @@ flutter:
   assets:
     - assets/images/logo.png
     - assets/icons/login-icon.png
+    - assets/icons/plus-icon.png
 
   fonts:
     - family: Gabarito
