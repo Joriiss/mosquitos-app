@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/app_colors.dart';
 import '../../map/presentation/map_page.dart';
+import 'new_cartography_page.dart';
 import '../data/dummy_parcours.dart';
 import '../domain/parcours.dart';
 
@@ -51,8 +52,121 @@ class ParcoursListPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: () {
-                  // Plus tard : navigation vers la création de cartographie
+                onPressed: () async {
+                  final controller = TextEditingController();
+
+                  final name = await showDialog<String>(
+                    context: context,
+                    barrierDismissible: true,
+                    builder: (context) {
+                      return Dialog(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Nouvelle cartographie',
+                                style: TextStyle(
+                                  fontFamily: 'Gabarito',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryBlue,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: controller,
+                                autofocus: true,
+                                style: const TextStyle(
+                                  fontFamily: 'Gabarito',
+                                  fontSize: 16,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Nom de la cartographie',
+                                  labelText: 'Nom de la cartographie',
+                                  labelStyle: const TextStyle(
+                                    fontFamily: 'Gabarito',
+                                    fontSize: 14,
+                                    color: AppColors.textGrey,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.primaryBlue,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(null),
+                                    child: const Text(
+                                      'Annuler',
+                                      style: TextStyle(
+                                        fontFamily: 'Gabarito',
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textGrey,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primaryBlue,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 10,
+                                      ),
+                                    ),
+                                    onPressed: () {
+                                      final text = controller.text.trim();
+                                      if (text.isEmpty) return;
+                                      Navigator.of(context).pop(text);
+                                    },
+                                    child: const Text(
+                                      'Créer la cartographie',
+                                      style: TextStyle(
+                                        fontFamily: 'Gabarito',
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+
+                  if (name == null || name.trim().isEmpty) return;
+
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => NewCartographyPage(name: name),
+                    ),
+                  );
                 },
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -68,11 +182,11 @@ class ParcoursListPage extends StatelessWidget {
                       ),
                     ),
                     SizedBox(width: 8),
-                        Image(
-                          image: AssetImage('assets/icons/plus-icon.png'),
-                          height: 22,
-                          width: 22,
-                        ),
+                    Image(
+                      image: AssetImage('assets/icons/plus-icon.png'),
+                      height: 22,
+                      width: 22,
+                    ),
                   ],
                 ),
               ),
