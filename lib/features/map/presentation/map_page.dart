@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
@@ -11,14 +13,15 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   MapboxMap? _mapboxMap;
+  StreamSubscription<geo.Position>? _positionSub;
 
   @override
   void initState() {
     super.initState();
-    _ensureLocationAndCenter();
+    _ensureLocationAndFollow();
   }
 
-  Future<void> _ensureLocationAndCenter() async {
+  Future<void> _ensureLocationAndFollow() async {
     geo.LocationPermission permission = await geo.Geolocator.checkPermission();
     if (permission == geo.LocationPermission.denied) {
       permission = await geo.Geolocator.requestPermission();
@@ -42,6 +45,30 @@ class _MapPageState extends State<MapPage> {
         ),
       );
     }
+
+    // Start continuous follow
+    _positionSub?.cancel();
+    _positionSub = geo.Geolocator.getPositionStream(
+      locationSettings: const geo.LocationSettings(
+        accuracy: geo.LocationAccuracy.high,
+        distanceFilter: 1, // meters before update
+      ),
+    ).listen((geo.Position pos) {
+      if (_mapboxMap == null) return;
+      _mapboxMap!.setCamera(
+        CameraOptions(
+          center: Point(
+            coordinates: Position(pos.longitude, pos.latitude),
+          ),
+        ),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _positionSub?.cancel();
+    super.dispose();
   }
 
   @override
@@ -66,7 +93,7 @@ class _MapPageState extends State<MapPage> {
             LocationComponentSettings(enabled: true),
           );
 
-          await _ensureLocationAndCenter();
+          await _ensureLocationAndFollow();
         },
       ),
     );
