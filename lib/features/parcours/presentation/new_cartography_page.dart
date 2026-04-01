@@ -18,18 +18,20 @@ class NewCartographyPage extends StatefulWidget {
 class _NewCartographyPageState extends State<NewCartographyPage> {
   MapboxMap? _mapboxMap;
   StreamSubscription<geo.Position>? _positionSub;
-  late final DateTime _startTime;
+  int _elapsedSeconds = 0;
   String _elapsedText = '00:00';
   Timer? _timer;
+  bool _isPaused = false;
 
   @override
   void initState() {
     super.initState();
-    _startTime = DateTime.now();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final diff = DateTime.now().difference(_startTime);
-      final minutes = diff.inMinutes.remainder(60).toString().padLeft(2, '0');
-      final seconds = diff.inSeconds.remainder(60).toString().padLeft(2, '0');
+      if (_isPaused) return;
+      _elapsedSeconds++;
+      final minutes =
+          (_elapsedSeconds ~/ 60).remainder(60).toString().padLeft(2, '0');
+      final seconds = (_elapsedSeconds % 60).toString().padLeft(2, '0');
       setState(() {
         _elapsedText = '$minutes:$seconds';
       });
@@ -134,6 +136,60 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
                   color: AppColors.white,
                 ),
               ),
+            ),
+          ),
+          // Boutons pause / stop en haut à droite
+          Positioned(
+            top: 40,
+            right: 16,
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlue,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(6), // 50% bigger than 6
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isPaused = !_isPaused;
+                      });
+                    },
+                    child: _isPaused
+                        ? const Icon(
+                            Icons.play_arrow,
+                            color: Colors.white,
+                            size: 25,
+                          )
+                        : Image.asset(
+                            'assets/icons/pause.png',
+                            height: 25,
+                            width: 25,
+                            color: Colors.white,
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlue,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(6),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Image.asset(
+                      'assets/icons/stop.png',
+                      height: 25,
+                      width: 25,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           // Stats temps + distance

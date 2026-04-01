@@ -62,6 +62,8 @@ flutter:
     - assets/icons/gps-puck.png
     - assets/icons/time.png
     - assets/icons/length.png
+    - assets/icons/pause.png
+    - assets/icons/stop.png
 
   fonts:
     - family: Gabarito
