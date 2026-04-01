@@ -1,10 +1,67 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_colors.dart';
+import '../../../services/api_service.dart';
 import '../../parcours/presentation/parcours_list_page.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  bool isLoading = false;
+  String? errorText;
+
+  @override
+  void dispose() {
+    usernameController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    setState(() {
+      isLoading = true;
+      errorText = null;
+    });
+
+    try {
+      final ok = await ApiService.login(
+        usernameController.text.trim(),
+        passwordController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      if (ok) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const ParcoursListPage(),
+          ),
+        );
+      } else {
+        setState(() {
+          errorText = "Identifiants invalides";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorText = "Impossible de se connecter au serveur";
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +108,7 @@ class LoginPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 TextField(
+                  controller: usernameController,
                   style: const TextStyle(
                     fontFamily: 'Gabarito',
                     fontSize: 16,
@@ -83,6 +141,7 @@ class LoginPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 15),
                 TextField(
+                  controller: passwordController,
                   obscureText: true,
                   style: const TextStyle(
                     fontFamily: 'Gabarito',
@@ -114,6 +173,16 @@ class LoginPage extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (errorText != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    errorText!,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontFamily: 'Gabarito',
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 15),
                 SizedBox(
                   width: double.infinity,
@@ -125,34 +194,31 @@ class LoginPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => const ParcoursListPage(),
-                        ),
-                      );
-                    },
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Se connecter',
-                          style: TextStyle(
-                            fontFamily: 'Gabarito',
-                            fontSize: 20,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.white,
+                    onPressed: isLoading ? null : _login,
+                    child: isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Se connecter',
+                                style: TextStyle(
+                                  fontFamily: 'Gabarito',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Image(
+                                image:
+                                    AssetImage('assets/icons/login-icon.png'),
+                                height: 22,
+                                width: 22,
+                              ),
+                            ],
                           ),
-                        ),
-                        SizedBox(width: 8),
-                        Image(
-                          image: AssetImage('assets/icons/login-icon.png'),
-                          height: 22,
-                          width: 22,
-                        ),
-                      ],
-                    ),
                   ),
                 ),
               ],
@@ -163,4 +229,3 @@ class LoginPage extends StatelessWidget {
     );
   }
 }
-
