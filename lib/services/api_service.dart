@@ -101,9 +101,9 @@ class ApiService {
       }),
     );
 
-    print('STATUS: ${response.statusCode}');
-    print('BODY: ${response.body}');
-    throw Exception(response.body);
+    if (response.statusCode != 201) {
+      throw Exception('Erreur création point: ${response.body}');
+    }
 
     return jsonDecode(response.body);
   }

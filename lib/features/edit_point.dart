@@ -14,13 +14,6 @@ class PointModal extends StatefulWidget {
   final double longitude;
   final String? parcoursId;
 
-  static const List<String> fixedTags = [
-    "Avaloir avec de l'eau",
-    "Avaloir sans eau",
-    "Avaloir encombré",
-    "Trappe EDF",
-  ];
-
   const PointModal({
     super.key,
     required this.isEdit,
@@ -161,10 +154,10 @@ class _PointModalState extends State<PointModal> {
   }
 
   Widget _tagsSection() {
-    final tags = apiLabels.isNotEmpty
-        ? apiLabels
-        : PointModal.fixedTags.map((e) => Label(id: e, name: e)).toList();
-
+    final tags = apiLabels;
+    if (apiLabels.isEmpty) {
+      return const Text('Aucun label disponible');
+    }
     return Wrap(
       spacing: 8,
       children: tags.map((tag) {
