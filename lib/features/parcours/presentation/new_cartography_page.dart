@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../../theme/app_colors.dart';
+import '../../edit_point.dart';
 
 class NewCartographyPage extends StatefulWidget {
   final String name;
@@ -275,7 +276,12 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
                   ),
                 ),
                 onPressed: () {
-                  // TODO: ouverture du formulaire d'ajout de point
+                  showDialog(
+                    context: context,
+                    builder: (_) => const PointModal(
+                      isEdit: false,
+                    ),
+                  );
                 },
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
