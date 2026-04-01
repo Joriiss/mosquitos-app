@@ -95,15 +95,15 @@ class ApiService {
         'description': description,
         'latitude': latitude,
         'longitude': longitude,
-        'label': labelId,
+        'label_id': labelId,
         'comment': comment,
         'is_treated': isTreated,
       }),
     );
 
-    if (response.statusCode != 201) {
-      throw Exception('Erreur création point: ${response.body}');
-    }
+    print('STATUS: ${response.statusCode}');
+    print('BODY: ${response.body}');
+    throw Exception(response.body);
 
     return jsonDecode(response.body);
   }
