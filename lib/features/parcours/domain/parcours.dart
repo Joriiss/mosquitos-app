@@ -16,5 +16,27 @@ class Parcours {
     required this.totalPoints,
     required this.treatedPoints,
   });
-}
 
+  factory Parcours.fromJson(Map<String, dynamic> json) {
+    final parcoursPoints = (json['parcours_points'] as List?) ?? [];
+
+    int treated = 0;
+    for (final item in parcoursPoints) {
+      if (item['is_completed_in_mission'] == true) {
+        treated++;
+      }
+    }
+
+    return Parcours(
+      id: json['id'],
+      name: json['name'] ?? '',
+      createdAt: DateTime.parse(json['created_at']),
+      distanceKm: json['distance_km'] != null
+          ? (json['distance_km'] as num).toDouble()
+          : null,
+      durationMin: json['duration_min'],
+      totalPoints: parcoursPoints.length,
+      treatedPoints: treated,
+    );
+  }
+}

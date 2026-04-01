@@ -3,12 +3,16 @@ import 'package:mosquitos_app/features/point_history.dart';
 import 'package:mosquitos_app/models/intervention_model.dart';
 import 'package:mosquitos_app/models/point_model.dart';
 import 'package:mosquitos_app/theme/app_colors.dart';
-
+import 'package:mosquitos_app/services/api_service.dart';
 
 class PointModal extends StatefulWidget {
   final bool isEdit;
   final Point? point;
   final List<Intervention> interventions;
+
+  final double latitude;
+  final double longitude;
+  final String? parcoursId;
 
   static const List<String> fixedTags = [
     "Avaloir avec de l'eau",
@@ -21,7 +25,10 @@ class PointModal extends StatefulWidget {
     super.key,
     required this.isEdit,
     this.point,
-     this.interventions = const [],
+    this.interventions = const [],
+    required this.latitude,
+    required this.longitude,
+    this.parcoursId,
   });
 
   @override
@@ -31,18 +38,53 @@ class PointModal extends StatefulWidget {
 class _PointModalState extends State<PointModal> {
   late TextEditingController nameController;
   late TextEditingController commentController;
+
   bool isTreated = false;
+  bool isSubmitting = false;
+
   Set<String> selectedTags = {};
+
+  List<Label> apiLabels = [];
+  String? selectedLabelId;
 
   @override
   void initState() {
     super.initState();
-    nameController = TextEditingController(text: widget.point?.name ?? '');
-    commentController = TextEditingController(text: widget.point?.comment ?? '');
+
+    nameController = TextEditingController(
+      text: widget.point?.name ?? '',
+    );
+
+    commentController = TextEditingController(
+      text: widget.point?.comment ?? '',
+    );
+
     isTreated = widget.point?.isTreated ?? false;
+
     if (widget.point?.label.name != null) {
       selectedTags.add(widget.point!.label.name);
+      selectedLabelId = widget.point!.label.id;
     }
+
+    _loadLabels();
+  }
+
+  Future<void> _loadLabels() async {
+    try {
+      final data = await ApiService.getLabels();
+
+      final labels = data.map<Label>((e) => Label.fromJson(e)).toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        apiLabels = labels;
+
+        if (labels.isNotEmpty && selectedLabelId == null) {
+          selectedLabelId = labels.first.id;
+        }
+      });
+    } catch (_) {}
   }
 
   @override
@@ -50,17 +92,12 @@ class _PointModalState extends State<PointModal> {
     return Theme(
       data: Theme.of(context).copyWith(
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryBlue),
-        textTheme: Theme.of(context).textTheme.apply(
-              fontFamily: 'Gabarito',
-              bodyColor: AppColors.primaryBlue,
-              displayColor: AppColors.primaryBlue,
-            ),
       ),
       child: Dialog(
         backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,47 +151,34 @@ class _PointModalState extends State<PointModal> {
     return TextField(
       controller: nameController,
       enabled: !widget.isEdit,
-      style: const TextStyle(color: AppColors.primaryBlue),
       decoration: InputDecoration(
         labelText: "Nom",
-        labelStyle: const TextStyle(color: AppColors.primaryBlue),
-        border:  OutlineInputBorder( 
+        border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),
-        filled: true,
-        fillColor: AppColors.white,
       ),
     );
   }
 
   Widget _tagsSection() {
+    final tags = apiLabels.isNotEmpty
+        ? apiLabels
+        : PointModal.fixedTags.map((e) => Label(id: e, name: e)).toList();
+
     return Wrap(
       spacing: 8,
-      children: PointModal.fixedTags.map((tag) {
-        final isSelected = selectedTags.contains(tag);
+      children: tags.map((tag) {
+        final isSelected = selectedLabelId == tag.id;
+
         return ChoiceChip(
-          label: Text(tag),
+          label: Text(tag.name),
           selected: isSelected,
-          selectedColor: AppColors.primaryBlue,
-          backgroundColor: AppColors.white,
-          labelStyle: TextStyle(
-            color: isSelected ? AppColors.white : Colors.black,
-            fontFamily: 'Gabarito',
-          ),
-          checkmarkColor: AppColors.white,
-          side: BorderSide(
-            color: isSelected ? AppColors.primaryBlue : Colors.grey.shade300,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
           onSelected: (val) {
+            if (!val) return;
+
             setState(() {
-              if (val) {
-                selectedTags.add(tag);
-              } else {
-                selectedTags.remove(tag);
-              }
+              selectedLabelId = tag.id;
+              selectedTags = {tag.name};
             });
           },
         );
@@ -163,210 +187,111 @@ class _PointModalState extends State<PointModal> {
   }
 
   Widget _treatedSwitch() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text("Point déjà traité ?", style: TextStyle(color: AppColors.primaryBlue)),
-        Switch(
-          value: isTreated,
-          trackOutlineColor:WidgetStateProperty.resolveWith<Color>((states) {
-            return AppColors.white;
-          }),
-          thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
-            return AppColors.white;
-          }),
-          trackColor: WidgetStateProperty.resolveWith<Color>((states) {
-            if (states.contains(WidgetState.selected)) {
-              return AppColors.primaryBlue;
-            }
-            return Colors.grey.shade300;
-          }),
-          onChanged: (val) {
-            setState(() {
-              isTreated = val;
-            });
-          },
-        ),
-      ],
+    return SwitchListTile(
+      title: const Text("Point déjà traité ?"),
+      value: isTreated,
+      onChanged: (val) {
+        setState(() {
+          isTreated = val;
+        });
+      },
     );
   }
 
   Widget _dateInfo() {
-    final date = widget.point?.lastTreatmentDate != null
-        ? "${widget.point!.lastTreatmentDate!.day.toString().padLeft(2, '0')}/"
-          "${widget.point!.lastTreatmentDate!.month.toString().padLeft(2, '0')}/"
-          "${widget.point!.lastTreatmentDate!.year}"
-        : "Aucune date";
-    return Text(
-      "Dernier traitement : $date",
-      style: const TextStyle(color: Colors.grey),
-    );
-  
+    return const Text("Dernier traitement");
   }
 
   Widget _photoPicker() {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Theme.of(context).colorScheme.primary,
-          side: BorderSide(color: AppColors.primaryBlue),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        onPressed: () {
-          // TODO: intégrer image_picker
-        },
-        icon: const Icon(Icons.upload, color: AppColors.primaryBlue),
-        label: const Text(
-          "Ajouter une photo",
-          style: TextStyle(
-            color: AppColors.primaryBlue,
-          ),
-        ),
-      ),
+    return OutlinedButton(
+      onPressed: () {},
+      child: const Text("Ajouter une photo"),
     );
   }
 
   Widget _photoPreview() {
-    return ClipRRect(
-       
-      borderRadius: BorderRadius.circular(8),
-      child: widget.point?.photoUrl != null
-          ? Image.network(
-              widget.point!.photoUrl!,
-              height: 150,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            )
-          : Image.network(
-              "https://via.placeholder.com/300",
-              height: 150,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
-    );
+    return const SizedBox(height: 120);
   }
 
   Widget _commentField() {
     return TextField(
       controller: commentController,
       maxLines: 4,
-      style: const TextStyle(color: AppColors.primaryBlue),
       decoration: InputDecoration(
         labelText: "Commentaires",
-        labelStyle: const TextStyle(color: AppColors.primaryBlue),
-        border:  OutlineInputBorder(
+        border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),
-        filled: true,
-        fillColor: AppColors.white,
-      ),
-      
-    );
-  }
-
-    Widget _historyButton() {
-    return SizedBox(
-        width: double.infinity,
-        child:  OutlinedButton.icon(
-      style: OutlinedButton.styleFrom(
-          foregroundColor: Theme.of(context).colorScheme.primary,
-          side: BorderSide(color: AppColors.primaryBlue),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      onPressed: () {
-         final fakePoint = widget.point ??
-            Point(
-              id: "123",
-              name: "Point de test",
-              latitude: 0,
-              longitude: 0,
-              comment: "Commentaire de test",
-              label: Label(id: "1", name: "Avaloir avec de l'eau"),
-              isTreated: true,
-              lastTreatmentDate: DateTime.now().subtract(const Duration(days: 5)),
-            );
-
-      final fakeInterventions = widget.interventions.isNotEmpty
-          ? widget.interventions
-          : [
-              Intervention(
-                id: "1",
-                interventionType: "treated",
-                comment: "Avec de l'eau",
-                performedBy: "Lucas",
-                performedAt: DateTime.now(),
-              ),
-              Intervention(
-                id: "2",
-                interventionType: "added",
-                comment: "Avaloir encombré",
-                performedBy: "John",
-                performedAt: DateTime.now().subtract(const Duration(days: 10)),
-              ),
-              Intervention(
-                id: "2",
-                interventionType: "added",
-                comment: "Avaloir encombré",
-                performedBy: "John",
-                performedAt: DateTime.now().subtract(const Duration(days: 10)),
-              ),
-              Intervention(
-                id: "2",
-                interventionType: "added",
-                comment: "Avaloir encombré",
-                performedBy: "John",
-                performedAt: DateTime.now().subtract(const Duration(days: 10)),
-              ),
-              Intervention(
-                id: "2",
-                interventionType: "added",
-                comment: "Avaloir encombré",
-                performedBy: "John",
-                performedAt: DateTime.now().subtract(const Duration(days: 10)),
-              ),
-            ];
-        showDialog(
-          context: context,
-          builder: (_) => PointHistoryDialog(
-            point: widget.point?? fakePoint,
-            interventions: fakeInterventions,
-          ),
-        );
-      },
-      icon: const Icon(Icons.history),
-      label: const Text("Voir l’historique" , 
-        style: TextStyle(
-            color: AppColors.primaryBlue,
-          ),
-        ),
       ),
     );
   }
 
+  Widget _historyButton() {
+    return OutlinedButton(
+      onPressed: () {},
+      child: const Text("Voir l’historique"),
+    );
+  }
 
   Widget _submitButton() {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryBlue,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-           shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        ),
-       
-        onPressed: () {
-          // TODO: implémenter la logique de sauvegarde
-          Navigator.pop(context);
-        },
-        child: Text(widget.isEdit ? "Enregistrer" : "Ajouter"),
+        onPressed: isSubmitting
+            ? null
+            : () async {
+                if (widget.isEdit) {
+                  Navigator.pop(context);
+                  return;
+                }
+
+                if (selectedLabelId == null ||
+                    nameController.text.trim().isEmpty) {
+                  return;
+                }
+
+                setState(() {
+                  isSubmitting = true;
+                });
+
+                try {
+                  final created = await ApiService.createPoint(
+                    name: nameController.text.trim(),
+                    description: commentController.text.trim(),
+                    latitude: widget.latitude,
+                    longitude: widget.longitude,
+                    labelId: selectedLabelId!,
+                    comment: commentController.text.trim(),
+                    isTreated: isTreated,
+                  );
+
+                  if (widget.parcoursId != null) {
+                    await ApiService.addPointToParcours(
+                      parcoursId: widget.parcoursId!,
+                      pointId: created['id'],
+                    );
+                  }
+
+                  if (!mounted) return;
+
+                  Navigator.pop(context, true);
+                } catch (_) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Erreur lors de l'ajout"),
+                    ),
+                  );
+                } finally {
+                  if (mounted) {
+                    setState(() {
+                      isSubmitting = false;
+                    });
+                  }
+                }
+              },
+        child: isSubmitting
+            ? const CircularProgressIndicator(color: Colors.white)
+            : const Text("Ajouter"),
       ),
     );
   }

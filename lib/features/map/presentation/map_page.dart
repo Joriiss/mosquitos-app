@@ -5,7 +5,11 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 class MapPage extends StatefulWidget {
-  const MapPage({super.key});
+  final String parcoursId;
+  const MapPage({
+    super.key,
+    required this.parcoursId,
+  });
 
   @override
   State<MapPage> createState() => _MapPageState();

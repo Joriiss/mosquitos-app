@@ -4,13 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
+import '../../../services/api_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../edit_point.dart';
 
 class NewCartographyPage extends StatefulWidget {
   final String name;
+  final String parcoursId;
 
-  const NewCartographyPage({super.key, required this.name});
+  const NewCartographyPage({
+    super.key,
+    required this.name,
+    required this.parcoursId,
+  });
 
   @override
   State<NewCartographyPage> createState() => _NewCartographyPageState();
@@ -19,32 +25,44 @@ class NewCartographyPage extends StatefulWidget {
 class _NewCartographyPageState extends State<NewCartographyPage> {
   MapboxMap? _mapboxMap;
   StreamSubscription<geo.Position>? _positionSub;
+
   int _elapsedSeconds = 0;
   String _elapsedText = '00:00';
   Timer? _timer;
   bool _isPaused = false;
 
+  double? currentLatitude;
+  double? currentLongitude;
+
   @override
   void initState() {
     super.initState();
+
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_isPaused) return;
+
       _elapsedSeconds++;
+
       final minutes =
           (_elapsedSeconds ~/ 60).remainder(60).toString().padLeft(2, '0');
+
       final seconds = (_elapsedSeconds % 60).toString().padLeft(2, '0');
+
       setState(() {
         _elapsedText = '$minutes:$seconds';
       });
     });
+
     _ensureLocationAndFollow();
   }
 
   Future<void> _ensureLocationAndFollow() async {
     geo.LocationPermission permission = await geo.Geolocator.checkPermission();
+
     if (permission == geo.LocationPermission.denied) {
       permission = await geo.Geolocator.requestPermission();
     }
+
     if (permission == geo.LocationPermission.deniedForever ||
         permission == geo.LocationPermission.denied) {
       return;
@@ -54,11 +72,17 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
       desiredAccuracy: geo.LocationAccuracy.high,
     );
 
+    currentLatitude = position.latitude;
+    currentLongitude = position.longitude;
+
     if (_mapboxMap != null) {
       await _mapboxMap!.setCamera(
         CameraOptions(
           center: Point(
-            coordinates: Position(position.longitude, position.latitude),
+            coordinates: Position(
+              position.longitude,
+              position.latitude,
+            ),
           ),
           zoom: 14,
         ),
@@ -66,20 +90,36 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
     }
 
     _positionSub?.cancel();
+
     _positionSub = geo.Geolocator.getPositionStream(
       locationSettings: const geo.LocationSettings(
         accuracy: geo.LocationAccuracy.high,
         distanceFilter: 1,
       ),
-    ).listen((geo.Position pos) {
+    ).listen((geo.Position pos) async {
+      currentLatitude = pos.latitude;
+      currentLongitude = pos.longitude;
+
       if (_mapboxMap == null) return;
+
       _mapboxMap!.setCamera(
         CameraOptions(
           center: Point(
-            coordinates: Position(pos.longitude, pos.latitude),
+            coordinates: Position(
+              pos.longitude,
+              pos.latitude,
+            ),
           ),
         ),
       );
+
+      try {
+        await ApiService.sendTrack(
+          parcoursId: widget.parcoursId,
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+        );
+      } catch (_) {}
     });
   }
 
@@ -118,12 +158,14 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
               await _ensureLocationAndFollow();
             },
           ),
-          // Nom de la cartographie (badge en haut à gauche)
           Positioned(
             top: 40,
             left: 16,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 5,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.primaryBlue,
                 borderRadius: BorderRadius.circular(8),
@@ -139,7 +181,6 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
               ),
             ),
           ),
-          // Boutons pause / stop en haut à droite
           Positioned(
             top: 40,
             right: 16,
@@ -150,7 +191,7 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
                     color: AppColors.primaryBlue,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  padding: const EdgeInsets.all(6), // 50% bigger than 6
+                  padding: const EdgeInsets.all(6),
                   child: InkWell(
                     onTap: () {
                       setState(() {
@@ -193,80 +234,44 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
               ],
             ),
           ),
-          // Stats temps + distance
           Positioned(
             top: 80,
             left: 16,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 5,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Image.asset(
+                    'assets/icons/time.png',
+                    height: 18,
+                    width: 18,
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset(
-                        'assets/icons/time.png',
-                        height: 18,
-                        width: 18,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _elapsedText,
-                        style: const TextStyle(
-                          fontFamily: 'Gabarito',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.primaryBlue,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 6),
+                  Text(
+                    _elapsedText,
+                    style: const TextStyle(
+                      fontFamily: 'Gabarito',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.primaryBlue,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset(
-                        'assets/icons/length.png',
-                        height: 18,
-                        width: 18,
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        '— km',
-                        style: TextStyle(
-                          fontFamily: 'Gabarito',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.primaryBlue,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          // Bouton "Ajouter un point" en bas
           Positioned(
             left: 16,
             right: 16,
             bottom: 24,
             child: SizedBox(
-              width: double.infinity,
               height: 52,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -276,16 +281,22 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
                   ),
                 ),
                 onPressed: () {
+                  if (currentLatitude == null || currentLongitude == null) {
+                    return;
+                  }
+
                   showDialog(
                     context: context,
-                    builder: (_) => const PointModal(
+                    builder: (_) => PointModal(
                       isEdit: false,
+                      latitude: currentLatitude!,
+                      longitude: currentLongitude!,
+                      parcoursId: widget.parcoursId,
                     ),
                   );
                 },
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       'Ajouter un point',
@@ -298,7 +309,9 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
                     ),
                     SizedBox(width: 8),
                     Image(
-                      image: AssetImage('assets/icons/plus-icon.png'),
+                      image: AssetImage(
+                        'assets/icons/plus-icon.png',
+                      ),
                       height: 22,
                       width: 22,
                     ),
@@ -312,4 +325,3 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
     );
   }
 }
-
