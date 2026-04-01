@@ -95,7 +95,7 @@ class ApiService {
         'description': description,
         'latitude': latitude,
         'longitude': longitude,
-        'label_id': labelId,
+        'label': labelId,
         'comment': comment,
         'is_treated': isTreated,
       }),
