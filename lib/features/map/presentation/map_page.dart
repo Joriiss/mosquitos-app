@@ -58,10 +58,12 @@ class _MapPageState extends State<MapPage> {
         onMapCreated: (mapboxMap) async {
           _mapboxMap = mapboxMap;
 
+          await _mapboxMap!.scaleBar.updateSettings(
+            ScaleBarSettings(enabled: false),
+          );
+
           await _mapboxMap!.location.updateSettings(
-            LocationComponentSettings(
-              enabled: true,
-            ),
+            LocationComponentSettings(enabled: true),
           );
 
           await _ensureLocationAndCenter();

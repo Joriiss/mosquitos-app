@@ -59,6 +59,7 @@ flutter:
     - assets/images/logo.png
     - assets/icons/login-icon.png
     - assets/icons/plus-icon.png
+    - assets/icons/gps-puck.png
 
   fonts:
     - family: Gabarito
