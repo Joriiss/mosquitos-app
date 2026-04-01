@@ -66,5 +66,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Nous utilisons votre position pour afficher votre emplacement sur la carte et cartographier les avaloirs.</string>
 </dict>
 </plist>
