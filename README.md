@@ -67,11 +67,11 @@ Ensuite :
 
    > Ce fichier est ignoré par Git. Chaque personne peut y mettre l’IP de son PC (Docker) sur le même Wi‑Fi.
 
-   ```dart
-   class ApiConfig {
-     // Exemple (ton cas) : backend Docker accessible depuis le téléphone
-     static const String baseUrl = 'http://192.168.1.22:8000/api';
-   }
+  ```dart
+  class ApiConfig {
+    // Exemple (ton cas) : backend Docker accessible depuis le téléphone
+    static const String baseUrl = 'http://192.168.1.22:8000/api';
+  }
    ```
 
 3. **Lancer l’app sur un device Android** :
