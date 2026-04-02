@@ -51,12 +51,15 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
     if (_mapboxMap == null) return;
     if (currentLatitude == null || currentLongitude == null) return;
 
+    final cameraState = await _mapboxMap!.getCameraState();
+
     await _mapboxMap!.setCamera(
       CameraOptions(
         center: Point(
           coordinates: Position(currentLongitude!, currentLatitude!),
         ),
-        zoom: 14,
+        // Preserve zoom level when recentring.
+        zoom: cameraState.zoom,
       ),
     );
   }
@@ -95,7 +98,7 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
             center: Point(
               coordinates: Position(currentLongitude!, currentLatitude!),
             ),
-            zoom: 14,
+            zoom: 15,
           ),
         );
       }
@@ -139,7 +142,7 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
               position.latitude,
             ),
           ),
-          zoom: 14,
+          zoom: 15,
         ),
       );
     }
@@ -281,7 +284,7 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
               center: Point(
                 coordinates: Position(4.8357, 45.7640),
               ),
-              zoom: 12,
+              zoom: 15,
             ),
             onMapCreated: (mapboxMap) async {
               _mapboxMap = mapboxMap;

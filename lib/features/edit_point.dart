@@ -150,6 +150,7 @@ Future<void> _uploadImage(File image) async {
       ),
       child: Dialog(
         backgroundColor: AppColors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -190,7 +191,7 @@ Future<void> _uploadImage(File image) async {
         Text(
           widget.isEdit ? "Point #${widget.point?.id}" : "Ajouter un point",
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             color: AppColors.primaryBlue,
           ),
@@ -211,7 +212,17 @@ Future<void> _uploadImage(File image) async {
       decoration: InputDecoration(
         labelText: "Nom",
         labelStyle: const TextStyle(color: AppColors.primaryBlue),
+        floatingLabelBehavior: FloatingLabelBehavior.always,
         border: OutlineInputBorder(
+          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 2),
           borderRadius: BorderRadius.circular(8),
         ),
       ),
@@ -221,7 +232,7 @@ Future<void> _uploadImage(File image) async {
   Widget _tagsSection() {
     final tags = apiLabels;
     if (apiLabels.isEmpty) {
-      return const Text('Aucun label disponible');
+      return const Text('Aucune étiquette disponible');
     }
     return Wrap(
       spacing: 8,
@@ -302,7 +313,7 @@ Widget _photoPicker() {
         width: double.infinity,
         child: OutlinedButton.icon(  style: OutlinedButton.styleFrom(
           foregroundColor: Theme.of(context).colorScheme.primary,
-          side: BorderSide(color: AppColors.primaryBlue),
+          side: BorderSide(color: AppColors.primaryBlue, width: 2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
@@ -345,7 +356,17 @@ Widget _photoPicker() {
       decoration: InputDecoration(
         labelText: "Commentaires",
          labelStyle: const TextStyle(color: AppColors.primaryBlue),
+        floatingLabelBehavior: FloatingLabelBehavior.always,
         border: OutlineInputBorder(
+          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 2),
           borderRadius: BorderRadius.circular(8),
         ),
         filled: true,
@@ -456,7 +477,14 @@ Widget _photoPicker() {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.isEdit ? "Enregistrer" : "Ajouter"),
+            Text(
+              widget.isEdit ? "Enregistrer" : "Ajouter",
+              style: const TextStyle(
+                fontSize: 20,
+                fontFamily: 'Gabarito',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             const SizedBox(width: 8),
             if (widget.isEdit)
               Image(

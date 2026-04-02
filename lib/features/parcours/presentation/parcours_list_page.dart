@@ -302,7 +302,7 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
                             'Nouvelle cartographie',
                             style: TextStyle(
                               fontFamily: 'Gabarito',
-                              fontSize: 18,
+                              fontSize: 15,
                               fontWeight: FontWeight.w500,
                               color: Colors.white,
                             ),
@@ -378,7 +378,7 @@ class _ParcoursCard extends StatelessWidget {
                     parcours.name,
                     style: const TextStyle(
                       fontFamily: 'Gabarito',
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primaryBlue,
                     ),
