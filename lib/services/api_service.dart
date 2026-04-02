@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 
 class ApiService {
@@ -17,6 +17,27 @@ class ApiService {
   }
 
   static void clearAuthToken() {
+    _authToken = null;
+  }
+  static Future<void> _saveToken(String token) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('auth_token', token);
+  _authToken = token;
+  }
+
+  static Future<bool> restoreSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    if (token != null && token.isNotEmpty) {
+      _authToken = token;
+      return true;
+    }
+    return false;
+  }
+
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
     _authToken = null;
   }
 
@@ -49,7 +70,7 @@ class ApiService {
     try {
       final data = jsonDecode(response.body);
       if (data is Map<String, dynamic> && data['token'] != null) {
-        _authToken = data['token'].toString();
+        await _saveToken(data['token'].toString());
         return true;
       }
     } catch (_) {}

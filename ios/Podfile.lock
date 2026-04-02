@@ -17,6 +17,9 @@ PODS:
     - MapboxCommon (= 24.20.2)
     - MapboxCoreMaps (= 11.20.2)
     - Turf (= 4.0.0)
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - Turf (4.0.0)
 
 DEPENDENCIES:
@@ -24,6 +27,7 @@ DEPENDENCIES:
   - geolocator_apple (from `.symlinks/plugins/geolocator_apple/darwin`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - mapbox_maps_flutter (from `.symlinks/plugins/mapbox_maps_flutter/ios`)
+  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
 
 SPEC REPOS:
   trunk:
@@ -41,6 +45,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   mapbox_maps_flutter:
     :path: ".symlinks/plugins/mapbox_maps_flutter/ios"
+  shared_preferences_foundation:
+    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
@@ -50,6 +56,7 @@ SPEC CHECKSUMS:
   MapboxCommon: 7a40d88a3257c0efe4b82daec742f45e29a1df89
   MapboxCoreMaps: c29c7be0e11aeaf2e9e8b3f521661a1436f5ad9a
   MapboxMaps: b2e0484e58daf80658fdcd444df1870756855fba
+  shared_preferences_foundation: 5086985c1d43c5ba4d5e69a4e8083a389e2909e6
   Turf: c9eb11a65d96af58cac523460fd40fec5061b081
 
 PODFILE CHECKSUM: 8c4d30c2258325612f2b7276ac7aac1f617fcf63

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-
+import 'package:mosquitos_app/features/splash/presentation/splash_page.dart';
 import 'config/mapbox_config.dart';
 import 'theme/app_colors.dart';
-import 'features/auth/presentation/login_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +25,7 @@ class MyApp extends StatelessWidget {
         ),
         fontFamily: 'Gabarito',
       ),
-      home: const LoginPage(),
+      home: const SplashPage(),
     );
   }
 }
