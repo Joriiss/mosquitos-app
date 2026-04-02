@@ -55,9 +55,6 @@ Future<void> syncParcoursPointCircles({
         circleColor: fill,
         circleRadius: 14,
         circleOpacity: 1,
-        circleStrokeWidth: 2.5,
-        circleStrokeColor: Colors.white.value,
-        circleStrokeOpacity: 1,
       ),
     );
   }
