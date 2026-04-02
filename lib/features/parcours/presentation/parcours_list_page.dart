@@ -280,7 +280,7 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
 
                         final created = await ApiService.createParcours(name);
                         if (!context.mounted) return;
-                        Navigator.of(context).push(
+                        final didStop = await Navigator.of(context).push<bool>(
                           MaterialPageRoute(
                             builder: (_) => NewCartographyPage(
                               name: created['name'],
@@ -288,6 +288,11 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
                             ),
                           ),
                         );
+
+                        if (!context.mounted) return;
+                        if (didStop == true) {
+                          await loadParcours();
+                        }
                       },
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,

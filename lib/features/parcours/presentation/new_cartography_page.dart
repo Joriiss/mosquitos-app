@@ -358,7 +358,7 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
                   padding: const EdgeInsets.all(6),
                   child: InkWell(
                     onTap: () {
-                      Navigator.of(context).pop();
+                      Navigator.of(context).pop(true);
                     },
                     child: Image.asset(
                       'assets/icons/stop.png',
