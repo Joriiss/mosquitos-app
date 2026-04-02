@@ -205,12 +205,18 @@ Future<void> _uploadImage(File image) async {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          widget.isEdit ? "Point #${widget.point?.id}" : "Ajouter un point",
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primaryBlue,
+        Expanded(
+          child: Text(
+            widget.isEdit
+                ? (widget.point?.name ?? 'Point')
+                : "Ajouter un point",
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primaryBlue,
+            ),
           ),
         ),
         IconButton(
