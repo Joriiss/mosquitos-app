@@ -289,9 +289,11 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> optimizeParcours(
+        double startLat, 
+        double startLng,
         String parcoursId) async {
       final response = await http.get(
-        Uri.parse('$baseUrl/parcours/$parcoursId/optimize/'),
+        Uri.parse('$baseUrl/parcours/$parcoursId/optimize/?start_lat=$startLat&start_lng=$startLng'),
         headers: _headers(),
       );
 
