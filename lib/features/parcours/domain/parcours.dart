@@ -36,15 +36,27 @@ class Parcours {
     }
 
     return Parcours(
-      id: json['id'],
+      id: json['id'].toString(),
       name: json['name'] ?? '',
       createdAt: DateTime.parse(json['created_at']),
-      distanceKm: json['distance_km'] != null
-          ? (json['distance_km'] as num).toDouble()
-          : null,
-      durationMin: json['duration_min'],
+      distanceKm: _parseDouble(json['distance_km']),
+      durationMin: _parseInt(json['duration_min']),
       totalPoints: parcoursPoints.length,
       resolvedCount: resolved,
     );
   }
+}
+
+double? _parseDouble(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v);
+  return null;
+}
+
+int? _parseInt(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.round();
+  if (v is String) return int.tryParse(v);
+  return null;
 }

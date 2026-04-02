@@ -135,13 +135,17 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
                           if (_selectionMode) {
                             _toggleSelected(parcours.id);
                           } else {
-                            Navigator.of(context).push(
+                            Navigator.of(context)
+                                .push(
                               MaterialPageRoute(
                                 builder: (_) => MapPage(
                                   parcoursId: parcours.id,
                                 ),
                               ),
-                            );
+                            )
+                                .then((_) {
+                              if (mounted) loadParcours();
+                            });
                           }
                         },
                         onLongPress: () => _toggleSelected(parcours.id),
@@ -395,14 +399,17 @@ class _ParcoursCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      if (parcours.distanceKm != null) ...[
-                        const Icon(Icons.route,
-                            size: 16, color: AppColors.primaryBlue),
+                  if (totalPts >= 2) ...[
+                    Row(
+                      children: [
+                        Image.asset(
+                          'assets/icons/length.png',
+                          height: 18,
+                          width: 18,
+                        ),
                         const SizedBox(width: 4),
                         Text(
-                          '${parcours.distanceKm!.toStringAsFixed(1)} km',
+                          _routeDistanceLabel(parcours),
                           style: const TextStyle(
                             fontFamily: 'Gabarito',
                             fontSize: 14,
@@ -411,10 +418,24 @@ class _ParcoursCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
+                        Image.asset(
+                          'assets/icons/time.png',
+                          height: 18,
+                          width: 18,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _routeDurationLabel(parcours),
+                          style: const TextStyle(
+                            fontFamily: 'Gabarito',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.textGrey,
+                          ),
+                        ),
                       ],
-                      // Duration hidden here (requested).
-                    ],
-                  ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -460,4 +481,20 @@ String _formatDate(DateTime date) {
   final m = date.month.toString().padLeft(2, '0');
   final y = (date.year % 100).toString().padLeft(2, '0');
   return '$d/$m/$y';
+}
+
+String _routeDistanceLabel(Parcours p) {
+  final km = p.distanceKm;
+  if (km != null && km > 0) {
+    return '${km.toStringAsFixed(1)} km';
+  }
+  return '—';
+}
+
+String _routeDurationLabel(Parcours p) {
+  final m = p.durationMin;
+  if (m != null && m > 0) {
+    return '$m min';
+  }
+  return '—';
 }

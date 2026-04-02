@@ -24,6 +24,7 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   MapboxMap? _mapboxMap;
   CircleAnnotationManager? _circleManager;
+  PolylineAnnotationManager? _routePolylineManager;
   Cancelable? _circleTapCancel;
   StreamSubscription<geo.Position>? _positionSub;
   double? _currentLatitude;
@@ -32,6 +33,8 @@ class _MapPageState extends State<MapPage> {
   bool _isPaused = false;
   Parcours? _parcours;
   int _nextPointNumber = 1;
+  /// Set from [ApiService.optimizeParcours] when the walking route is drawn.
+  int? _optimizedDurationMin;
 
   Future<void> _ensureCircleManager() async {
     if (_mapboxMap == null) return;
@@ -80,12 +83,14 @@ class _MapPageState extends State<MapPage> {
       setState(() {
         _parcours = Parcours.fromJson(json);
         _nextPointNumber = (_parcours?.totalPoints ?? 0) + 1;
+        _optimizedDurationMin = null;
       });
 
       await _ensureCircleManager();
       final manager = _circleManager;
       if (manager == null) return;
 
+      await _syncOptimizedRoutePolyline(json);
       await syncParcoursPointCircles(
         manager: manager,
         parcoursJson: json,
@@ -95,8 +100,81 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
+  /// Walking route from backend [optimize] (Mapbox); falls back to straight segments if the API fails.
+  Future<void> _syncOptimizedRoutePolyline(
+    Map<String, dynamic> parcoursJson,
+  ) async {
+    final map = _mapboxMap;
+    if (map == null) return;
+
+    await waitForMapStyleLoaded(map);
+    if (!mounted) return;
+
+    _routePolylineManager ??=
+        await map.annotations.createPolylineAnnotationManager();
+
+    await _routePolylineManager!.deleteAll();
+
+    final rawPts = parcoursJson['parcours_points'];
+    final total = rawPts is List ? rawPts.length : 0;
+    if (total < 2) {
+      return;
+    }
+
+    Future<void> drawLine(List<Position> positions) async {
+      await _routePolylineManager!.create(
+        PolylineAnnotationOptions(
+          geometry: LineString(coordinates: positions),
+          lineColor: AppColors.primaryBlue.value,
+          lineWidth: 5.0,
+        ),
+      );
+    }
+
+    var usedMapboxGeometry = false;
+    try {
+      final data = await ApiService.optimizeParcours(widget.parcoursId);
+      if (!mounted) return;
+
+      final positions =
+          parseGeoJsonLineStringPositions(data['geometry']);
+      if (positions != null && positions.length >= 2) {
+        final dur = data['duration_min'];
+        setState(() {
+          _optimizedDurationMin = dur is num ? dur.round() : null;
+        });
+        await drawLine(positions);
+        usedMapboxGeometry = true;
+      }
+    } catch (_) {
+      // No token / network / API error — try fallback below.
+    }
+
+    if (usedMapboxGeometry) return;
+
+    final fallback = waypointPositionsFromParcoursJson(parcoursJson);
+    if (fallback == null || fallback.length < 2 || !mounted) return;
+
+    setState(() {
+      _optimizedDurationMin = null;
+    });
+    await drawLine(fallback);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Itinéraire piéton indisponible (MAPBOX_TOKEN sur l’API). '
+          'Tracé en ligne droite entre les points.',
+        ),
+        duration: Duration(seconds: 5),
+      ),
+    );
+  }
+
   String get _durationText {
-    final durationMin = _parcours?.durationMin;
+    final durationMin =
+        _optimizedDurationMin ?? _parcours?.durationMin;
     return '${durationMin ?? 0} min';
   }
 

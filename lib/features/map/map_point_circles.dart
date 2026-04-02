@@ -127,6 +127,90 @@ Future<void> openPointDetailFromMap({
   }
 }
 
+/// Straight path through waypoints in [visit_order] when optimize API fails (e.g. no MAPBOX_TOKEN).
+List<Position>? waypointPositionsFromParcoursJson(
+  Map<String, dynamic> parcoursJson,
+) {
+  final raw = parcoursJson['parcours_points'];
+  if (raw is! List || raw.length < 2) return null;
+
+  final items = <Map<String, dynamic>>[];
+  for (final e in raw) {
+    if (e is Map<String, dynamic>) {
+      items.add(e);
+    } else if (e is Map) {
+      items.add(Map<String, dynamic>.from(e));
+    }
+  }
+
+  items.sort((a, b) {
+    final ao = a['visit_order'];
+    final bo = b['visit_order'];
+    final ai = ao is num ? ao.toInt() : 0;
+    final bi = bo is num ? bo.toInt() : 0;
+    return ai.compareTo(bi);
+  });
+
+  final out = <Position>[];
+  for (final pp in items) {
+    final p = pp['point'];
+    Map<String, dynamic>? pmap;
+    if (p is Map<String, dynamic>) {
+      pmap = p;
+    } else if (p is Map) {
+      pmap = Map<String, dynamic>.from(p);
+    } else {
+      continue;
+    }
+    final lat = pmap['latitude'];
+    final lng = pmap['longitude'];
+    if (lat is! num || lng is! num) continue;
+    out.add(Position(lng.toDouble(), lat.toDouble()));
+  }
+  return out.length >= 2 ? out : null;
+}
+
+/// Mapbox GeoJSON [LineString] / [MultiLineString] → positions [lng, lat].
+List<Position>? parseGeoJsonLineStringPositions(dynamic geometry) {
+  if (geometry is! Map) return null;
+  final type = geometry['type'];
+  final coords = geometry['coordinates'];
+  if (coords is! List) return null;
+
+  final out = <Position>[];
+
+  if (type == 'LineString') {
+    for (final c in coords) {
+      if (c is List && c.length >= 2) {
+        out.add(
+          Position(
+            (c[0] as num).toDouble(),
+            (c[1] as num).toDouble(),
+          ),
+        );
+      }
+    }
+  } else if (type == 'MultiLineString') {
+    for (final line in coords) {
+      if (line is! List) continue;
+      for (final c in line) {
+        if (c is List && c.length >= 2) {
+          out.add(
+            Position(
+              (c[0] as num).toDouble(),
+              (c[1] as num).toDouble(),
+            ),
+          );
+        }
+      }
+    }
+  } else {
+    return null;
+  }
+
+  return out.length >= 2 ? out : null;
+}
+
 int markerFillColorForPoint(Map<String, dynamic> point) {
   final label = point['label'];
   Map<String, dynamic>? labelMap;
