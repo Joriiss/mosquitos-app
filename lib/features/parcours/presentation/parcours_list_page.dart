@@ -378,7 +378,7 @@ class _ParcoursCard extends StatelessWidget {
                     parcours.name,
                     style: const TextStyle(
                       fontFamily: 'Gabarito',
-                      fontSize: 15,
+                      fontSize: 17,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primaryBlue,
                     ),

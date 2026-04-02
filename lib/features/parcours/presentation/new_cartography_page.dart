@@ -8,6 +8,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import '../../../services/api_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../edit_point.dart';
+import '../../map/map_point_circles.dart';
 
 class NewCartographyPage extends StatefulWidget {
   final String name;
@@ -25,6 +26,7 @@ class NewCartographyPage extends StatefulWidget {
 
 class _NewCartographyPageState extends State<NewCartographyPage> {
   MapboxMap? _mapboxMap;
+  CircleAnnotationManager? _circleManager;
   StreamSubscription<geo.Position>? _positionSub;
 
   int _elapsedSeconds = 0;
@@ -235,6 +237,33 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
     return '${distanceKm.toStringAsFixed(2)} km';
   }
 
+  Future<void> _ensureCircleManager() async {
+    if (_mapboxMap == null) return;
+    _circleManager ??=
+        await _mapboxMap!.annotations.createCircleAnnotationManager();
+  }
+
+  Future<void> _loadParcoursPointMarkers() async {
+    try {
+      final json = await ApiService.getParcoursById(widget.parcoursId);
+      if (!mounted) return;
+
+      final count = (json['parcours_points'] as List?)?.length ?? 0;
+      setState(() {
+        _nextPointNumber = count + 1;
+      });
+
+      await _ensureCircleManager();
+      final manager = _circleManager;
+      if (manager == null) return;
+
+      await syncParcoursPointCircles(
+        manager: manager,
+        parcoursJson: json,
+      );
+    } catch (_) {}
+  }
+
   Future<void> _setupPolyline() async {
     if (_mapboxMap == null) return;
     if (_polylineManager != null) return;
@@ -298,7 +327,13 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
               );
 
               await _ensureLocationAndFollow();
+
+              await waitForMapStyleLoaded(mapboxMap);
+              if (!mounted) return;
+
               await _setupPolyline();
+              await _ensureCircleManager();
+              await _loadParcoursPointMarkers();
             },
           ),
           Positioned(
@@ -485,9 +520,9 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
                       longitude: currentLongitude!,
                       parcoursId: widget.parcoursId,
                     ),
-                  ).then((created) {
+                  ).then((created) async {
                     if (created == true && mounted) {
-                      setState(() => _nextPointNumber++);
+                      await _loadParcoursPointMarkers();
                     }
                   });
                 },

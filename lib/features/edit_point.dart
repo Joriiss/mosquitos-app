@@ -124,6 +124,17 @@ Future<void> _uploadImage(File image) async {
     _loadLabels();
   }
 
+  Label? get _selectedLabel {
+    if (selectedLabelId == null) return null;
+    for (final l in apiLabels) {
+      if (l.id == selectedLabelId) return l;
+    }
+    return null;
+  }
+
+  /// Show "Point déjà traité ?" only when the label can be treated.
+  bool get _showTreatedSwitch => _selectedLabel?.isTreatable ?? true;
+
   Future<void> _loadLabels() async {
     try {
       final data = await ApiService.getLabels();
@@ -137,6 +148,12 @@ Future<void> _uploadImage(File image) async {
 
         if (labels.isNotEmpty && selectedLabelId == null) {
           selectedLabelId = labels.first.id;
+        }
+
+        final sel =
+            labels.where((l) => l.id == selectedLabelId).toList();
+        if (sel.isNotEmpty && !sel.first.isTreatable) {
+          isTreated = false;
         }
       });
     } catch (_) {}
@@ -261,6 +278,9 @@ Future<void> _uploadImage(File image) async {
             setState(() {
               selectedLabelId = tag.id;
               selectedTags = {tag.name};
+              if (!tag.isTreatable) {
+                isTreated = false;
+              }
             });
           },
         );
@@ -269,6 +289,9 @@ Future<void> _uploadImage(File image) async {
   }
 
   Widget _treatedSwitch() {
+    if (!_showTreatedSwitch) {
+      return const SizedBox.shrink();
+    }
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -444,7 +467,7 @@ Widget _photoPicker() {
                     longitude: widget.longitude,
                     labelId: selectedLabelId!,
                     comment: commentController.text.trim(),
-                    isTreated: isTreated,
+                    isTreated: _showTreatedSwitch ? isTreated : false,
                   );
 
                   if (widget.parcoursId != null) {

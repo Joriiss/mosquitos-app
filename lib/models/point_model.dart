@@ -2,11 +2,14 @@ class Label {
   final String id;
   final String name;
   final String? color;
+  /// When false, the point is not eligible for "treated" workflow (UI hides the toggle).
+  final bool isTreatable;
 
   Label({
     required this.id,
     required this.name,
     this.color,
+    this.isTreatable = true,
   });
 
   factory Label.fromJson(Map<String, dynamic> json) {
@@ -14,6 +17,7 @@ class Label {
       id: json['id'],
       name: json['name'],
       color: json['color'],
+      isTreatable: json['is_treatable'] ?? true,
     );
   }
 }

@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
+import '../../edit_point.dart';
+import '../../parcours/domain/parcours.dart';
+import '../map_point_circles.dart';
+import '../../../services/api_service.dart';
 import '../../../theme/app_colors.dart';
 
 class MapPage extends StatefulWidget {
@@ -19,9 +23,60 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   MapboxMap? _mapboxMap;
+  CircleAnnotationManager? _circleManager;
   StreamSubscription<geo.Position>? _positionSub;
   double? _currentLatitude;
   double? _currentLongitude;
+
+  bool _isPaused = false;
+  Parcours? _parcours;
+  int _nextPointNumber = 1;
+
+  Future<void> _ensureCircleManager() async {
+    if (_mapboxMap == null) return;
+    _circleManager ??=
+        await _mapboxMap!.annotations.createCircleAnnotationManager();
+  }
+
+  /// Circle annotations must be created after the style is loaded, otherwise they may not appear.
+  Future<void> _waitForStyleThenSyncMarkers() async {
+    final map = _mapboxMap;
+    if (map == null) return;
+
+    await waitForMapStyleLoaded(map);
+    if (!mounted) return;
+
+    await _ensureCircleManager();
+    await _loadParcoursDetailAndSyncMarkers();
+  }
+
+  Future<void> _loadParcoursDetailAndSyncMarkers() async {
+    try {
+      final json = await ApiService.getParcoursById(widget.parcoursId);
+      if (!mounted) return;
+
+      setState(() {
+        _parcours = Parcours.fromJson(json);
+        _nextPointNumber = (_parcours?.totalPoints ?? 0) + 1;
+      });
+
+      await _ensureCircleManager();
+      final manager = _circleManager;
+      if (manager == null) return;
+
+      await syncParcoursPointCircles(
+        manager: manager,
+        parcoursJson: json,
+      );
+    } catch (_) {
+      // Map stays usable; header may stay empty if the request fails.
+    }
+  }
+
+  String get _durationText {
+    final durationMin = _parcours?.durationMin;
+    return '${durationMin ?? 0} min';
+  }
 
   Future<void> _recenter() async {
     if (_mapboxMap == null) return;
@@ -82,6 +137,7 @@ class _MapPageState extends State<MapPage> {
         distanceFilter: 1, // meters before update
       ),
     ).listen((geo.Position pos) {
+      if (_isPaused) return;
       _currentLatitude = pos.latitude;
       _currentLongitude = pos.longitude;
     });
@@ -96,6 +152,7 @@ class _MapPageState extends State<MapPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.white,
       body: Stack(
         children: [
           MapWidget(
@@ -118,16 +175,191 @@ class _MapPageState extends State<MapPage> {
               );
 
               await _ensureLocationAndFollow();
+              await _waitForStyleThenSyncMarkers();
             },
           ),
           Positioned(
-            bottom: 24,
+            top: 40,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 5,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlue,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _parcours?.name ?? widget.parcoursId,
+                style: const TextStyle(
+                  fontFamily: 'Gabarito',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.white,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 80,
+            left: 16,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Image.asset(
+                        'assets/icons/time.png',
+                        height: 18,
+                        width: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _durationText,
+                        style: const TextStyle(
+                          fontFamily: 'Gabarito',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 40,
+            right: 16,
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlue,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(6),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isPaused = !_isPaused;
+                      });
+                    },
+                    child: _isPaused
+                        ? const Icon(
+                            Icons.play_arrow,
+                            color: Colors.white,
+                            size: 25,
+                          )
+                        : Image.asset(
+                            'assets/icons/pause.png',
+                            height: 25,
+                            width: 25,
+                            color: Colors.white,
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlue,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(6),
+                  child: InkWell(
+                    onTap: () {
+                      _positionSub?.cancel();
+                      Navigator.of(context).pop(true);
+                    },
+                    child: Image.asset(
+                      'assets/icons/stop.png',
+                      height: 25,
+                      width: 25,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            bottom: 92,
             right: 16,
             child: FloatingActionButton(
               backgroundColor: AppColors.primaryBlue,
               foregroundColor: Colors.white,
               onPressed: _recenter,
               child: const Icon(Icons.my_location, color: Colors.white),
+            ),
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 24,
+            child: SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  if (_currentLatitude == null || _currentLongitude == null) {
+                    return;
+                  }
+
+                  final k = _nextPointNumber;
+                  showDialog<bool>(
+                    context: context,
+                    builder: (_) => PointModal(
+                      isEdit: false,
+                      defaultName: 'Point #$k',
+                      latitude: _currentLatitude!,
+                      longitude: _currentLongitude!,
+                      parcoursId: widget.parcoursId,
+                    ),
+                  ).then((created) async {
+                    if (created == true && mounted) {
+                      await _loadParcoursDetailAndSyncMarkers();
+                    }
+                  });
+                },
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Ajouter un point',
+                      style: TextStyle(
+                        fontFamily: 'Gabarito',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Image(
+                      image: AssetImage(
+                        'assets/icons/plus-icon.png',
+                      ),
+                      height: 22,
+                      width: 22,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],

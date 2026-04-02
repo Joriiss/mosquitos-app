@@ -29,6 +29,22 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  /// Full parcours payload including nested `parcours_points` → `point` (for map markers).
+  static Future<Map<String, dynamic>> getParcoursById(String parcoursId) async {
+    final response =
+        await http.get(Uri.parse('$baseUrl/parcours/$parcoursId/'));
+
+    if (response.statusCode != 200) {
+      throw Exception('Erreur chargement parcours');
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Réponse parcours invalide');
+    }
+    return decoded;
+  }
+
   static Future<Map<String, dynamic>> createParcours(String name) async {
     final response = await http.post(
       Uri.parse('$baseUrl/parcours/'),
