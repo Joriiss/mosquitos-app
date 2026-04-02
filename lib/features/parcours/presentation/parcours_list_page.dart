@@ -356,7 +356,6 @@ class _ParcoursCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -365,9 +364,11 @@ class _ParcoursCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               onTap: onTap,
               onLongPress: onLongPress,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   Text(
                     parcours.name,
                     style: const TextStyle(
@@ -438,6 +439,7 @@ class _ParcoursCard extends StatelessWidget {
                     ],
                   ),
                 ],
+                ),
               ),
             ),
           ),
