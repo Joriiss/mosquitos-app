@@ -323,29 +323,31 @@ class ApiService {
     }
   }
 
-  static Future<void> uploadPointPhotos({
+ static Future<void> uploadPointPhotos({
   required String pointId,
   required List<File> images,
-  }) async {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('$baseUrl/points/$pointId/photos/'),
+}) async {
+  final request = http.MultipartRequest(
+    'POST',
+    Uri.parse('$baseUrl/points/$pointId/photos/'),
+  );
+
+  request.headers.addAll(_headers());
+
+  for (final img in images) {
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'images',     
+        img.path,
+        filename: img.path.split('/').last,  
+      ),
     );
-
-    // Ajout du header d'auth
-    request.headers.addAll(_headers());
-
-    for (final img in images) {
-      request.files.add(
-        await http.MultipartFile.fromPath('images', img.path),
-      );
-    }
-
-    final response = await request.send();
-    final body = await response.stream.bytesToString();
-
-    if (response.statusCode != 201) {
-      throw Exception('Erreur upload photos: $body');
-    }
   }
-}
+
+  final response = await request.send();
+  final body = await response.stream.bytesToString();
+
+  if (response.statusCode != 201) {
+    throw Exception('Erreur upload photos: $body');
+  }
+}}

@@ -1,9 +1,6 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import '../config/api_config.dart';
 import 'package:mosquitos_app/features/point_history.dart';
 import 'package:mosquitos_app/models/intervention_model.dart';
 import 'package:mosquitos_app/models/point_model.dart';
@@ -39,7 +36,6 @@ class PointModal extends StatefulWidget {
 class _PointModalState extends State<PointModal> {
   late TextEditingController nameController;
   late TextEditingController commentController;
-   static const String baseUrl = ApiConfig.baseUrl;
 
   
   bool isTreated = false;
@@ -493,8 +489,6 @@ Widget _photoPreview() {
                       isTreated: _showTreatedSwitch ? isTreated : false,
                     );
                     pointId = updated['id'];
-                    if (!mounted) return;
-                    Navigator.pop(context, true);
                   } else {
                     final created = await ApiService.createPoint(
                       name: nameController.text.trim(),
@@ -515,6 +509,7 @@ Widget _photoPreview() {
                       pointId: pointId,
                       images: _selectedImages,
                     );
+                    }
 
                     if (widget.parcoursId != null) {
                       await ApiService.addPointToParcours(
@@ -526,7 +521,7 @@ Widget _photoPreview() {
                     if (!mounted) return;
 
                     Navigator.pop(context, true);
-                  }
+                  
                 } catch (_) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
