@@ -24,6 +24,7 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   MapboxMap? _mapboxMap;
   CircleAnnotationManager? _circleManager;
+  Cancelable? _circleTapCancel;
   StreamSubscription<geo.Position>? _positionSub;
   double? _currentLatitude;
   double? _currentLongitude;
@@ -47,7 +48,28 @@ class _MapPageState extends State<MapPage> {
     if (!mounted) return;
 
     await _ensureCircleManager();
+    _bindParcoursCircleTapsOnce();
     await _loadParcoursDetailAndSyncMarkers();
+  }
+
+  void _bindParcoursCircleTapsOnce() {
+    final m = _circleManager;
+    if (m == null || _circleTapCancel != null) return;
+    _circleTapCancel = bindParcoursCircleTapHandler(
+      manager: m,
+      onPointId: (pointId) {
+        unawaited(_onParcoursPointTapped(pointId));
+      },
+    );
+  }
+
+  Future<void> _onParcoursPointTapped(String pointId) async {
+    await openPointDetailFromMap(
+      context: context,
+      pointId: pointId,
+      parcoursId: widget.parcoursId,
+      onClosedRefresh: _loadParcoursDetailAndSyncMarkers,
+    );
   }
 
   Future<void> _loadParcoursDetailAndSyncMarkers() async {
@@ -145,6 +167,7 @@ class _MapPageState extends State<MapPage> {
 
   @override
   void dispose() {
+    _circleTapCancel?.cancel();
     _positionSub?.cancel();
     super.dispose();
   }
@@ -191,7 +214,7 @@ class _MapPageState extends State<MapPage> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                _parcours?.name ?? widget.parcoursId,
+                _parcours?.name ?? 'Cartographie Sans Nom',
                 style: const TextStyle(
                   fontFamily: 'Gabarito',
                   fontSize: 18,

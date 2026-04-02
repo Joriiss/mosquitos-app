@@ -27,6 +27,7 @@ class NewCartographyPage extends StatefulWidget {
 class _NewCartographyPageState extends State<NewCartographyPage> {
   MapboxMap? _mapboxMap;
   CircleAnnotationManager? _circleManager;
+  Cancelable? _circleTapCancel;
   StreamSubscription<geo.Position>? _positionSub;
 
   int _elapsedSeconds = 0;
@@ -243,6 +244,26 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
         await _mapboxMap!.annotations.createCircleAnnotationManager();
   }
 
+  void _bindParcoursCircleTapsOnce() {
+    final m = _circleManager;
+    if (m == null || _circleTapCancel != null) return;
+    _circleTapCancel = bindParcoursCircleTapHandler(
+      manager: m,
+      onPointId: (pointId) {
+        unawaited(_onParcoursPointTapped(pointId));
+      },
+    );
+  }
+
+  Future<void> _onParcoursPointTapped(String pointId) async {
+    await openPointDetailFromMap(
+      context: context,
+      pointId: pointId,
+      parcoursId: widget.parcoursId,
+      onClosedRefresh: _loadParcoursPointMarkers,
+    );
+  }
+
   Future<void> _loadParcoursPointMarkers() async {
     try {
       final json = await ApiService.getParcoursById(widget.parcoursId);
@@ -254,6 +275,7 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
       });
 
       await _ensureCircleManager();
+      _bindParcoursCircleTapsOnce();
       final manager = _circleManager;
       if (manager == null) return;
 
@@ -296,6 +318,7 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
 
   @override
   void dispose() {
+    _circleTapCancel?.cancel();
     _positionSub?.cancel();
     _timer?.cancel();
     super.dispose();

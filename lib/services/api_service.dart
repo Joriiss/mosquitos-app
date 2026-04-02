@@ -6,6 +6,31 @@ import '../config/api_config.dart';
 class ApiService {
   static const String baseUrl = ApiConfig.baseUrl;
 
+  /// Set by [login]; sent as `Authorization: Token <key>` on subsequent API calls.
+  static String? _authToken;
+
+  static String? get authToken => _authToken;
+
+  static void setAuthToken(String? token) {
+    _authToken = token;
+  }
+
+  static void clearAuthToken() {
+    _authToken = null;
+  }
+
+  static Map<String, String> _headers({bool jsonBody = false}) {
+    final h = <String, String>{};
+    if (jsonBody) {
+      h['Content-Type'] = 'application/json';
+    }
+    final t = _authToken;
+    if (t != null && t.isNotEmpty) {
+      h['Authorization'] = 'Token $t';
+    }
+    return h;
+  }
+
   static Future<bool> login(String username, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/login/'),
@@ -16,11 +41,25 @@ class ApiService {
       }),
     );
 
-    return response.statusCode == 200;
+    if (response.statusCode != 200) {
+      return false;
+    }
+
+    try {
+      final data = jsonDecode(response.body);
+      if (data is Map<String, dynamic> && data['token'] != null) {
+        _authToken = data['token'].toString();
+        return true;
+      }
+    } catch (_) {}
+    return false;
   }
 
   static Future<List<dynamic>> getParcours() async {
-    final response = await http.get(Uri.parse('$baseUrl/parcours/'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/parcours/'),
+      headers: _headers(),
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Erreur chargement parcours');
@@ -31,8 +70,10 @@ class ApiService {
 
   /// Full parcours payload including nested `parcours_points` → `point` (for map markers).
   static Future<Map<String, dynamic>> getParcoursById(String parcoursId) async {
-    final response =
-        await http.get(Uri.parse('$baseUrl/parcours/$parcoursId/'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/parcours/$parcoursId/'),
+      headers: _headers(),
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Erreur chargement parcours');
@@ -48,7 +89,7 @@ class ApiService {
   static Future<Map<String, dynamic>> createParcours(String name) async {
     final response = await http.post(
       Uri.parse('$baseUrl/parcours/'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers(jsonBody: true),
       body: jsonEncode({
         'name': name,
         'description': '',
@@ -66,7 +107,10 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getPoints() async {
-    final response = await http.get(Uri.parse('$baseUrl/points/'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/points/'),
+      headers: _headers(),
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Erreur chargement points');
@@ -75,8 +119,28 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  static Future<Map<String, dynamic>> getPointById(String pointId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/points/$pointId/'),
+      headers: _headers(),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Erreur chargement point');
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Réponse point invalide');
+    }
+    return decoded;
+  }
+
   static Future<List<dynamic>> getLabels() async {
-    final response = await http.get(Uri.parse('$baseUrl/labels/'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/labels/'),
+      headers: _headers(),
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Erreur chargement labels');
@@ -86,8 +150,10 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getPointHistory(String pointId) async {
-    final response =
-        await http.get(Uri.parse('$baseUrl/points/$pointId/history/'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/points/$pointId/history/'),
+      headers: _headers(),
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Erreur chargement historique');
@@ -107,7 +173,7 @@ class ApiService {
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/points/'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers(jsonBody: true),
       body: jsonEncode({
         'name': name,
         'description': description,
@@ -129,6 +195,7 @@ class ApiService {
   static Future<void> markPointTreated(String pointId) async {
     final response = await http.post(
       Uri.parse('$baseUrl/points/$pointId/mark_treated/'),
+      headers: _headers(),
     );
 
     if (response.statusCode != 200) {
@@ -142,7 +209,7 @@ class ApiService {
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/parcours/$parcoursId/add_point/'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers(jsonBody: true),
       body: jsonEncode({
         'point_id': pointId,
       }),
@@ -153,19 +220,20 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> optimizeParcours(
-        String parcoursId) async {
-      final response = await http.get(
-        Uri.parse('$baseUrl/parcours/$parcoursId/optimize/'),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Erreur optimisation parcours: ${response.body}');
-      }
-
-      return jsonDecode(response.body);
-    }
-
+  static Future<Map<String, dynamic>> optimizeParcours(
+        String parcoursId) async {
+      final response = await http.get(
+        Uri.parse('$baseUrl/parcours/$parcoursId/optimize/'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Erreur optimisation parcours: ${response.body}');
+      }
+
+      return jsonDecode(response.body);
+    }
+
   static Future<void> sendTrack({
     required String parcoursId,
     required double latitude,
@@ -173,7 +241,7 @@ class ApiService {
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/mission-tracks/'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers(jsonBody: true),
       body: jsonEncode({
         'parcours': parcoursId,
         'latitude': latitude,
@@ -189,6 +257,7 @@ class ApiService {
   static Future<void> deleteParcours(String parcoursId) async {
     final response = await http.delete(
       Uri.parse('$baseUrl/parcours/$parcoursId/'),
+      headers: _headers(),
     );
 
     // DRF default is 204 No Content, but we accept 200 for safety.

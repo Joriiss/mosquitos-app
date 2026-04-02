@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
+import '../edit_point.dart';
+import '../../models/intervention_model.dart';
+import '../../models/point_model.dart' as point_model;
+import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 
 /// Annotation layers need the style to be loaded first, or circles/polylines may not show.
@@ -47,6 +51,9 @@ Future<void> syncParcoursPointCircles({
     final lng = (p['longitude'] as num?)?.toDouble();
     if (lat == null || lng == null) continue;
 
+    final pid = p['id'];
+    if (pid == null) continue;
+
     final fill = markerFillColorForPoint(p);
 
     await manager.create(
@@ -55,8 +62,67 @@ Future<void> syncParcoursPointCircles({
         circleColor: fill,
         circleRadius: 14,
         circleOpacity: 1,
+        customData: {'point_id': pid.toString()},
       ),
     );
+  }
+}
+
+/// Tap on a circle → identify point via [customData] and open [PointModal] (view / edit UI).
+Cancelable bindParcoursCircleTapHandler({
+  required CircleAnnotationManager manager,
+  required void Function(String pointId) onPointId,
+}) {
+  return manager.tapEvents(
+    onTap: (CircleAnnotation annotation) {
+      final raw = annotation.customData?['point_id'];
+      final id = raw?.toString();
+      if (id == null || id.isEmpty) return;
+      onPointId(id);
+    },
+  );
+}
+
+/// Loads point + history, shows [PointModal] in edit mode (read-only submit).
+Future<void> openPointDetailFromMap({
+  required BuildContext context,
+  required String pointId,
+  required String parcoursId,
+  Future<void> Function()? onClosedRefresh,
+}) async {
+  try {
+    final raw = await ApiService.getPointById(pointId);
+    final historyRaw = await ApiService.getPointHistory(pointId);
+    if (!context.mounted) return;
+
+    final missionPoint = point_model.Point.fromJson(raw);
+    final interventions = historyRaw.map<Intervention>((e) {
+      final m = e is Map<String, dynamic>
+          ? e
+          : Map<String, dynamic>.from(e as Map);
+      return Intervention.fromJson(m);
+    }).toList();
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => PointModal(
+        isEdit: true,
+        point: missionPoint,
+        interventions: interventions,
+        latitude: missionPoint.latitude,
+        longitude: missionPoint.longitude,
+        parcoursId: parcoursId,
+      ),
+    );
+    if (context.mounted) {
+      await onClosedRefresh?.call();
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible de charger le point')),
+      );
+    }
   }
 }
 
