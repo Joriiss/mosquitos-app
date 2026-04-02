@@ -292,8 +292,14 @@ class ApiService {
         double startLat, 
         double startLng,
         String parcoursId) async {
+      final uri = Uri.parse('$baseUrl/parcours/$parcoursId/optimize/').replace(
+        queryParameters: <String, String>{
+          'start_lat': startLat.toString(),
+          'start_lng': startLng.toString(),
+        },
+      );
       final response = await http.get(
-        Uri.parse('$baseUrl/parcours/$parcoursId/optimize/?start_lat=$startLat&start_lng=$startLng'),
+        uri,
         headers: _headers(),
       );
 
