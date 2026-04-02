@@ -34,6 +34,20 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
   double? currentLatitude;
   double? currentLongitude;
 
+  Future<void> _recenter() async {
+    if (_mapboxMap == null) return;
+    if (currentLatitude == null || currentLongitude == null) return;
+
+    await _mapboxMap!.setCamera(
+      CameraOptions(
+        center: Point(
+          coordinates: Position(currentLongitude!, currentLatitude!),
+        ),
+        zoom: 14,
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -101,17 +115,6 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
       currentLongitude = pos.longitude;
 
       if (_mapboxMap == null) return;
-
-      _mapboxMap!.setCamera(
-        CameraOptions(
-          center: Point(
-            coordinates: Position(
-              pos.longitude,
-              pos.latitude,
-            ),
-          ),
-        ),
-      );
 
       try {
         await ApiService.sendTrack(
@@ -265,6 +268,17 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
                   ),
                 ],
               ),
+            ),
+          ),
+          Positioned(
+            bottom: 92,
+            right: 16,
+            child: FloatingActionButton(
+              backgroundColor: AppColors.primaryBlue,
+              mini: true,
+              foregroundColor: Colors.white,
+              onPressed: _recenter,
+              child: const Icon(Icons.my_location, color: Colors.white),
             ),
           ),
           Positioned(
