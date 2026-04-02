@@ -103,7 +103,7 @@ Future<void> openPointDetailFromMap({
       return Intervention.fromJson(m);
     }).toList();
 
-    await showDialog<void>(
+    final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) => PointModal(
         isEdit: true,
@@ -114,7 +114,7 @@ Future<void> openPointDetailFromMap({
         parcoursId: parcoursId,
       ),
     );
-    if (context.mounted) {
+    if (context.mounted && saved == true) {
       await onClosedRefresh?.call();
     }
   } catch (_) {

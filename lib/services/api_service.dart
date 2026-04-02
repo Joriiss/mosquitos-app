@@ -192,6 +192,41 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  static Future<Map<String, dynamic>> updatePoint({
+    required String pointId,
+    required String name,
+    required String description,
+    required double latitude,
+    required double longitude,
+    required String labelId,
+    required String comment,
+    required bool isTreated,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/points/$pointId/'),
+      headers: _headers(jsonBody: true),
+      body: jsonEncode({
+        'name': name,
+        'description': description,
+        'latitude': latitude,
+        'longitude': longitude,
+        'label_id': labelId,
+        'comment': comment,
+        'is_treated': isTreated,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Erreur mise à jour point: ${response.body}');
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Réponse point invalide');
+    }
+    return decoded;
+  }
+
   static Future<void> markPointTreated(String pointId) async {
     final response = await http.post(
       Uri.parse('$baseUrl/points/$pointId/mark_treated/'),
@@ -220,20 +255,20 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> optimizeParcours(
-        String parcoursId) async {
-      final response = await http.get(
-        Uri.parse('$baseUrl/parcours/$parcoursId/optimize/'),
-        headers: _headers(),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Erreur optimisation parcours: ${response.body}');
-      }
-
-      return jsonDecode(response.body);
-    }
-
+  static Future<Map<String, dynamic>> optimizeParcours(
+        String parcoursId) async {
+      final response = await http.get(
+        Uri.parse('$baseUrl/parcours/$parcoursId/optimize/'),
+        headers: _headers(),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Erreur optimisation parcours: ${response.body}');
+      }
+
+      return jsonDecode(response.body);
+    }
+
   static Future<void> sendTrack({
     required String parcoursId,
     required double latitude,

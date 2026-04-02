@@ -230,8 +230,7 @@ Future<void> _uploadImage(File image) async {
   Widget _nameField() {
     return TextField(
       controller: nameController,
-      enabled: !widget.isEdit,
-       style: const TextStyle(color: AppColors.primaryBlue),
+      style: const TextStyle(color: AppColors.primaryBlue),
       decoration: InputDecoration(
         labelText: "Nom",
         labelStyle: const TextStyle(color: AppColors.primaryBlue),
@@ -451,11 +450,6 @@ Widget _photoPicker() {
         onPressed: isSubmitting
             ? null
             : () async {
-                if (widget.isEdit) {
-                  Navigator.pop(context);
-                  return;
-                }
-
                 if (selectedLabelId == null ||
                     nameController.text.trim().isEmpty) {
                   return;
@@ -466,30 +460,54 @@ Widget _photoPicker() {
                 });
 
                 try {
-                  final created = await ApiService.createPoint(
-                    name: nameController.text.trim(),
-                    description: commentController.text.trim(),
-                    latitude: widget.latitude,
-                    longitude: widget.longitude,
-                    labelId: selectedLabelId!,
-                    comment: commentController.text.trim(),
-                    isTreated: _showTreatedSwitch ? isTreated : false,
-                  );
-
-                  if (widget.parcoursId != null) {
-                    await ApiService.addPointToParcours(
-                      parcoursId: widget.parcoursId!,
-                      pointId: created['id'],
+                  if (widget.isEdit) {
+                    final id = widget.point?.id;
+                    if (id == null) {
+                      if (mounted) Navigator.pop(context, false);
+                      return;
+                    }
+                    await ApiService.updatePoint(
+                      pointId: id,
+                      name: nameController.text.trim(),
+                      description: commentController.text.trim(),
+                      latitude: widget.latitude,
+                      longitude: widget.longitude,
+                      labelId: selectedLabelId!,
+                      comment: commentController.text.trim(),
+                      isTreated: _showTreatedSwitch ? isTreated : false,
                     );
+                    if (!mounted) return;
+                    Navigator.pop(context, true);
+                  } else {
+                    final created = await ApiService.createPoint(
+                      name: nameController.text.trim(),
+                      description: commentController.text.trim(),
+                      latitude: widget.latitude,
+                      longitude: widget.longitude,
+                      labelId: selectedLabelId!,
+                      comment: commentController.text.trim(),
+                      isTreated: _showTreatedSwitch ? isTreated : false,
+                    );
+
+                    if (widget.parcoursId != null) {
+                      await ApiService.addPointToParcours(
+                        parcoursId: widget.parcoursId!,
+                        pointId: created['id'],
+                      );
+                    }
+
+                    if (!mounted) return;
+
+                    Navigator.pop(context, true);
                   }
-
-                  if (!mounted) return;
-
-                  Navigator.pop(context, true);
                 } catch (_) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Erreur lors de l'ajout"),
+                    SnackBar(
+                      content: Text(
+                        widget.isEdit
+                            ? "Erreur lors de l'enregistrement"
+                            : "Erreur lors de l'ajout",
+                      ),
                     ),
                   );
                 } finally {
