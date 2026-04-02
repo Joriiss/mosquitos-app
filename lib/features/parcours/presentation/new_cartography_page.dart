@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
@@ -28,11 +29,16 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
 
   int _elapsedSeconds = 0;
   String _elapsedText = '00:00';
+  String _distanceText = '0 m';
+  double _distanceKm = 0;
   Timer? _timer;
   bool _isPaused = false;
 
   double? currentLatitude;
   double? currentLongitude;
+  double? _lastLatitude;
+  double? _lastLongitude;
+  bool _trackingStarted = false;
 
   Future<void> _recenter() async {
     if (_mapboxMap == null) return;
@@ -71,6 +77,24 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
   }
 
   Future<void> _ensureLocationAndFollow() async {
+    // Prevent multiple subscriptions when this method is called twice
+    // (once in initState, once in onMapCreated).
+    if (_trackingStarted) {
+      if (_mapboxMap != null &&
+          currentLatitude != null &&
+          currentLongitude != null) {
+        await _mapboxMap!.setCamera(
+          CameraOptions(
+            center: Point(
+              coordinates: Position(currentLongitude!, currentLatitude!),
+            ),
+            zoom: 14,
+          ),
+        );
+      }
+      return;
+    }
+
     geo.LocationPermission permission = await geo.Geolocator.checkPermission();
 
     if (permission == geo.LocationPermission.denied) {
@@ -88,6 +112,11 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
 
     currentLatitude = position.latitude;
     currentLongitude = position.longitude;
+    _lastLatitude = position.latitude;
+    _lastLongitude = position.longitude;
+    _trackingStarted = true;
+    _distanceKm = 0;
+    _distanceText = '0 m';
 
     if (_mapboxMap != null) {
       await _mapboxMap!.setCamera(
@@ -116,6 +145,33 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
 
       if (_mapboxMap == null) return;
 
+      // Accumulate distance only when not paused.
+      if (_lastLatitude != null && _lastLongitude != null) {
+        if (_isPaused) {
+          // Update last position to avoid a jump when resuming.
+          _lastLatitude = pos.latitude;
+          _lastLongitude = pos.longitude;
+        } else {
+          final segmentMeters = _haversineMeters(
+            _lastLatitude!,
+            _lastLongitude!,
+            pos.latitude,
+            pos.longitude,
+          );
+
+          // Ignore tiny movements / GPS jitter.
+          const minSegmentMeters = 2.0;
+          if (segmentMeters >= minSegmentMeters) {
+            _distanceKm += segmentMeters / 1000.0;
+            _distanceText = _formatDistance(_distanceKm);
+            setState(() {});
+          }
+
+          _lastLatitude = pos.latitude;
+          _lastLongitude = pos.longitude;
+        }
+      }
+
       try {
         await ApiService.sendTrack(
           parcoursId: widget.parcoursId,
@@ -124,6 +180,37 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
         );
       } catch (_) {}
     });
+  }
+
+  double _degToRad(double deg) => deg * (pi / 180.0);
+
+  // Great-circle distance between two lat/lon points (meters).
+  double _haversineMeters(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const earthRadiusMeters = 6371000.0;
+
+    final dLat = _degToRad(lat2 - lat1);
+    final dLon = _degToRad(lon2 - lon1);
+
+    final a = pow(sin(dLat / 2), 2) +
+        cos(_degToRad(lat1)) *
+            cos(_degToRad(lat2)) *
+            pow(sin(dLon / 2), 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadiusMeters * c;
+  }
+
+  String _formatDistance(double distanceKm) {
+    if (distanceKm < 1.0) {
+      final meters = distanceKm * 1000.0;
+      return '${meters.toStringAsFixed(0)} m';
+    }
+    return '${distanceKm.toStringAsFixed(2)} km';
   }
 
   @override
@@ -240,36 +327,72 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
           Positioned(
             top: 80,
             left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 5,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Image.asset(
-                    'assets/icons/time.png',
-                    height: 18,
-                    width: 18,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _elapsedText,
-                    style: const TextStyle(
-                      fontFamily: 'Gabarito',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.primaryBlue,
-                    ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
-              ),
+                  child: Row(
+                    children: [
+                      Image.asset(
+                        'assets/icons/time.png',
+                        height: 18,
+                        width: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _elapsedText,
+                        style: const TextStyle(
+                          fontFamily: 'Gabarito',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Image.asset(
+                        'assets/icons/length.png',
+                        height: 18,
+                        width: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _distanceText,
+                        style: const TextStyle(
+                          fontFamily: 'Gabarito',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
+          
           Positioned(
             bottom: 92,
             right: 16,
