@@ -34,6 +34,7 @@ migrate_working_dir/
 /coverage/
 /android/app/src/main/res/values/secrets.xml
 lib/config/mapbox_config.local.dart
+lib/config/api_config.local.dart
 
 # Symbolication related
 app.*.symbols
