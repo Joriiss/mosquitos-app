@@ -5,7 +5,8 @@ class Parcours {
   final double? distanceKm;
   final int? durationMin;
   final int totalPoints;
-  final int treatedPoints;
+  /// Points with `is_treated` or whose label is not treatable (or missing label).
+  final int resolvedCount;
 
   const Parcours({
     required this.id,
@@ -14,16 +15,23 @@ class Parcours {
     this.distanceKm,
     this.durationMin,
     required this.totalPoints,
-    required this.treatedPoints,
+    required this.resolvedCount,
   });
 
   factory Parcours.fromJson(Map<String, dynamic> json) {
     final parcoursPoints = (json['parcours_points'] as List?) ?? [];
 
-    int treated = 0;
-    for (final item in parcoursPoints) {
-      if (item['is_completed_in_mission'] == true) {
-        treated++;
+    int resolved = 0;
+    for (final raw in parcoursPoints) {
+      if (raw is! Map<String, dynamic>) continue;
+      final p = raw['point'];
+      if (p is! Map<String, dynamic>) continue;
+      final treated = p['is_treated'] == true;
+      final label = p['label'];
+      final isTreatable =
+          label is Map<String, dynamic> && label['is_treatable'] == true;
+      if (treated || !isTreatable) {
+        resolved++;
       }
     }
 
@@ -36,7 +44,7 @@ class Parcours {
           : null,
       durationMin: json['duration_min'],
       totalPoints: parcoursPoints.length,
-      treatedPoints: treated,
+      resolvedCount: resolved,
     );
   }
 }

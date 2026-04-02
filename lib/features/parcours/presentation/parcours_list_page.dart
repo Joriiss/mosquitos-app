@@ -339,9 +339,10 @@ class _ParcoursCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final treated = parcours.treatedPoints;
-    final total = parcours.totalPoints;
-    final progress = total == 0 ? 0.0 : treated / total;
+    final resolved = parcours.resolvedCount;
+    final totalPts = parcours.totalPoints;
+    final progress = totalPts == 0 ? 0.0 : resolved / totalPts;
+    final progressLabel = totalPts == 0 ? '—' : '$resolved / $totalPts';
 
     return Ink(
       decoration: BoxDecoration(
@@ -433,7 +434,7 @@ class _ParcoursCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        '$treated / $total',
+                        progressLabel,
                         style: const TextStyle(
                           fontFamily: 'Gabarito',
                           fontSize: 14,

@@ -8,7 +8,7 @@ final dummyParcoursList = <Parcours>[
     distanceKm: 12.4,
     durationMin: 45,
     totalPoints: 32,
-    treatedPoints: 18,
+    resolvedCount: 27,
   ),
   Parcours(
     id: '2',
@@ -17,7 +17,7 @@ final dummyParcoursList = <Parcours>[
     distanceKm: 8.7,
     durationMin: 35,
     totalPoints: 21,
-    treatedPoints: 5,
+    resolvedCount: 9,
   ),
   Parcours(
     id: '3',
@@ -26,7 +26,7 @@ final dummyParcoursList = <Parcours>[
     distanceKm: 15.2,
     durationMin: 55,
     totalPoints: 40,
-    treatedPoints: 28,
+    resolvedCount: 40,
   ),
 ];
 
