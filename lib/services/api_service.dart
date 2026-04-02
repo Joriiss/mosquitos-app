@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
@@ -298,6 +299,32 @@ class ApiService {
     // DRF default is 204 No Content, but we accept 200 for safety.
     if (response.statusCode != 204 && response.statusCode != 200) {
       throw Exception('Erreur suppression parcours');
+    }
+  }
+
+  static Future<void> uploadPointPhotos({
+  required String pointId,
+  required List<File> images,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/points/$pointId/photos/'),
+    );
+
+    // Ajout du header d'auth
+    request.headers.addAll(_headers());
+
+    for (final img in images) {
+      request.files.add(
+        await http.MultipartFile.fromPath('images', img.path),
+      );
+    }
+
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+
+    if (response.statusCode != 201) {
+      throw Exception('Erreur upload photos: $body');
     }
   }
 }

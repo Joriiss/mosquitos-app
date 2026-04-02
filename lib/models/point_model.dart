@@ -27,7 +27,7 @@ class Point {
   String name;
   double latitude;
   double longitude;
-  String? photoUrl;
+  List<String> photos; 
   String comment;
   String description;
   Label label;
@@ -39,7 +39,7 @@ class Point {
     required this.name,
     required this.latitude,
     required this.longitude,
-    this.photoUrl,
+    this.photos = const [],
     required this.comment,
     required this.description,
     required this.label,
@@ -48,14 +48,17 @@ class Point {
   });
 
   factory Point.fromJson(Map<String, dynamic> json) {
-    final photos = (json['photos'] as List?) ?? [];
+     final rawPhotos = (json['photos'] as List?) ?? [];
 
     return Point(
       id: json['id'],
       name: json['name'],
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
-      photoUrl: photos.isNotEmpty ? photos.first['image'] : null,
+       photos: rawPhotos
+          .map((p) => p['image'] as String)
+          .whereType<String>()
+          .toList(),
       comment: json['comment'] ?? '',
       description: json['description'] ?? '',
       label: Label.fromJson(json['label']),

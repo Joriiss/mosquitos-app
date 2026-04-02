@@ -45,7 +45,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   geolocator_apple: 66b711889fd333205763b83c9dcf0a57a28c7afd
-  image_picker_ios: 4f2f91b01abdb52842a8e277617df877e40f905b
+  image_picker_ios: c560581cceedb403a6ff17f2f816d7fea1421fc1
   mapbox_maps_flutter: d514808eb3b2ff6865c242f0176bf3fa934cf8ce
   MapboxCommon: 7a40d88a3257c0efe4b82daec742f45e29a1df89
   MapboxCoreMaps: c29c7be0e11aeaf2e9e8b3f521661a1436f5ad9a

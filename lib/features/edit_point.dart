@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import '../config/api_config.dart';
 import 'package:mosquitos_app/features/point_history.dart';
 import 'package:mosquitos_app/models/intervention_model.dart';
 import 'package:mosquitos_app/models/point_model.dart';
@@ -18,6 +19,7 @@ class PointModal extends StatefulWidget {
   final double longitude;
   final String? parcoursId;
   final String? defaultName;
+ 
 
   const PointModal({
     super.key,
@@ -37,15 +39,16 @@ class PointModal extends StatefulWidget {
 class _PointModalState extends State<PointModal> {
   late TextEditingController nameController;
   late TextEditingController commentController;
+   static const String baseUrl = ApiConfig.baseUrl;
 
+  
   bool isTreated = false;
   bool isSubmitting = false;
 
   Set<String> selectedTags = {};
-
-  File? _selectedImage;
+  List<File> _selectedImages = [];
   bool _isUploading = false;
-  String? _photoUrl;
+  
   
   List<Label> apiLabels = [];
   String? selectedLabelId;
@@ -79,30 +82,12 @@ Future<void> _pickImage() async {
     imageQuality: 80,
   );
   if (picked != null) {
-    setState(() => _selectedImage = File(picked.path));
-    await _uploadImage(_selectedImage!);
+    
+    setState(() => _selectedImages.add(File(picked.path)));
+   
   }
 }
-Future<void> _uploadImage(File image) async {
-  setState(() => _isUploading = true);
-  try {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('https://ton-api.com/api/points/upload-photo/'),
-    );
-    request.files.add(
-      await http.MultipartFile.fromPath('photo', image.path),
-    );
-    final response = await request.send();
-    final body = await response.stream.bytesToString();
-    final json = jsonDecode(body);
-    // json['photo_url'] → l'URL retournée par Django
-    setState(() => _photoUrl = json['photo_url']);
-  } finally {
-    setState(() => _isUploading = false);
-  }
-}
-  @override
+ @override
   void initState() {
     super.initState();
 
@@ -180,6 +165,7 @@ Future<void> _uploadImage(File image) async {
                 _nameField(),
                 const SizedBox(height: 16),
                  _photoPreview(),
+                 const SizedBox(height: 16),
                  _photoPicker(),
                 const SizedBox(height: 16),
                 _tagsSection(),
@@ -324,18 +310,36 @@ Future<void> _uploadImage(File image) async {
       ],
     );
   }
+  
   Widget _dateInfo() {
-    return const Text("Dernier traitement");
+    final date = widget.point?.lastTreatmentDate != null
+        ? "${widget.point!.lastTreatmentDate!.day.toString().padLeft(2, '0')}/"
+          "${widget.point!.lastTreatmentDate!.month.toString().padLeft(2, '0')}/"
+          "${widget.point!.lastTreatmentDate!.year}"
+        : "Aucune date";
+    return Text(
+      "Dernier traitement : $date",
+      style: const TextStyle(color: Colors.black),
+    );
+  
   }
 
 Widget _photoPicker() {
   return Column(
     children: [
-      if (_selectedImage != null)
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.file(_selectedImage!, height: 150, fit: BoxFit.cover),
-        ),
+      if (_selectedImages.isNotEmpty)
+  SizedBox(
+    height: 150,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemCount: _selectedImages.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 8),
+      itemBuilder: (_, i) => ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.file(_selectedImages[i], height: 150, width: 150, fit: BoxFit.cover),
+      ),
+    ),
+  ),
       const SizedBox(height: 8),
       SizedBox(
         width: double.infinity,
@@ -362,21 +366,30 @@ Widget _photoPicker() {
   );
 }
 
-  Widget _photoPreview() {
-   if (widget.point?.photoUrl == null || widget.point!.photoUrl!.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return ClipRRect(
-       
-      borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        widget.point!.photoUrl!,
-        height: 150,
-        width: double.infinity,
-        fit: BoxFit.cover, )
-    );
-  }
+Widget _photoPreview() {
+  final photos = widget.point?.photos ?? [];
+  if (photos.isEmpty) return const SizedBox.shrink();
 
+  return SizedBox(
+    height: 150,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemCount: photos.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 8),
+      itemBuilder: (context, index) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            photos[index],
+            height: 150,
+            width: 150,
+            fit: BoxFit.cover,
+          ),
+        );
+      },
+    ),
+  );
+}
   Widget _commentField() {
     return TextField(
       controller: commentController,
@@ -460,13 +473,16 @@ Widget _photoPicker() {
                 });
 
                 try {
+                  String pointId='';
+                    
+                   
                   if (widget.isEdit) {
                     final id = widget.point?.id;
                     if (id == null) {
                       if (mounted) Navigator.pop(context, false);
                       return;
                     }
-                    await ApiService.updatePoint(
+                   final updated = await ApiService.updatePoint(
                       pointId: id,
                       name: nameController.text.trim(),
                       description: commentController.text.trim(),
@@ -476,6 +492,7 @@ Widget _photoPicker() {
                       comment: commentController.text.trim(),
                       isTreated: _showTreatedSwitch ? isTreated : false,
                     );
+                    pointId = updated['id'];
                     if (!mounted) return;
                     Navigator.pop(context, true);
                   } else {
@@ -488,11 +505,21 @@ Widget _photoPicker() {
                       comment: commentController.text.trim(),
                       isTreated: _showTreatedSwitch ? isTreated : false,
                     );
+                    pointId = created['id'];
+                   
+                  }
+ 
+                    
+                    if (_selectedImages.isNotEmpty) {
+                    await ApiService.uploadPointPhotos(
+                      pointId: pointId,
+                      images: _selectedImages,
+                    );
 
                     if (widget.parcoursId != null) {
                       await ApiService.addPointToParcours(
                         parcoursId: widget.parcoursId!,
-                        pointId: created['id'],
+                        pointId: pointId,
                       );
                     }
 
