@@ -17,6 +17,60 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
   List<Parcours> parcoursList = [];
   bool loading = true;
 
+  final Set<String> _selectedParcoursIds = <String>{};
+  bool get _selectionMode => _selectedParcoursIds.isNotEmpty;
+
+  void _toggleSelected(String parcoursId) {
+    setState(() {
+      if (_selectedParcoursIds.contains(parcoursId)) {
+        _selectedParcoursIds.remove(parcoursId);
+      } else {
+        _selectedParcoursIds.add(parcoursId);
+      }
+    });
+  }
+
+  Future<void> _deleteSelectedParcours() async {
+    if (_selectedParcoursIds.isEmpty) return;
+
+    final count = _selectedParcoursIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Supprimer les cartographies ?'),
+          content: Text(
+            'Cette action supprimera $count cartographie${count > 1 ? "s" : ""} et les données associées.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Supprimer'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    final ids = _selectedParcoursIds.toList();
+    setState(() => loading = true);
+    try {
+      for (final id in ids) {
+        await ApiService.deleteParcours(id);
+      }
+      _selectedParcoursIds.clear();
+      await loadParcours();
+    } catch (_) {
+      setState(() => loading = false);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +99,15 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
       appBar: AppBar(
         backgroundColor: AppColors.white,
         elevation: 0,
+        actions: _selectionMode
+            ? [
+                IconButton(
+                  tooltip: 'Supprimer',
+                  icon: const Icon(Icons.delete, color: AppColors.accentRed),
+                  onPressed: _deleteSelectedParcours,
+                ),
+              ]
+            : null,
         title: const Text(
           'Vos cartographies existantes',
           style: TextStyle(
@@ -65,7 +128,24 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                     itemBuilder: (context, index) {
                       final parcours = parcoursList[index];
-                      return _ParcoursCard(parcours: parcours);
+                      return _ParcoursCard(
+                        parcours: parcours,
+                        isSelected: _selectedParcoursIds.contains(parcours.id),
+                        onTap: () {
+                          if (_selectionMode) {
+                            _toggleSelected(parcours.id);
+                          } else {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => MapPage(
+                                  parcoursId: parcours.id,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        onLongPress: () => _toggleSelected(parcours.id),
+                      );
                     },
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemCount: parcoursList.length,
@@ -241,8 +321,16 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
 
 class _ParcoursCard extends StatelessWidget {
   final Parcours parcours;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
-  const _ParcoursCard({required this.parcours});
+  const _ParcoursCard({
+    required this.parcours,
+    required this.isSelected,
+    required this.onTap,
+    required this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -250,62 +338,48 @@ class _ParcoursCard extends StatelessWidget {
     final total = parcours.totalPoints;
     final progress = total == 0 ? 0.0 : treated / total;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => MapPage(
-              parcoursId: parcours.id,
-            ),
-          ),
-        );
-      },
-      child: Ink(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primaryBlue.withOpacity(0.1)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
+    return Ink(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isSelected
+              ? AppColors.accentRed
+              : AppColors.primaryBlue.withOpacity(0.1),
+          width: isSelected ? 2 : 1,
         ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              parcours.name,
-              style: const TextStyle(
-                fontFamily: 'Gabarito',
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryBlue,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Créé le ${_formatDate(parcours.createdAt)}',
-              style: const TextStyle(
-                fontFamily: 'Gabarito',
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: AppColors.textGrey,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                if (parcours.distanceKm != null) ...[
-                  const Icon(Icons.route,
-                      size: 16, color: AppColors.primaryBlue),
-                  const SizedBox(width: 4),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: onTap,
+              onLongPress: onLongPress,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    '${parcours.distanceKm!.toStringAsFixed(1)} km',
+                    parcours.name,
+                    style: const TextStyle(
+                      fontFamily: 'Gabarito',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryBlue,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Créé le ${_formatDate(parcours.createdAt)}',
                     style: const TextStyle(
                       fontFamily: 'Gabarito',
                       fontSize: 14,
@@ -313,41 +387,61 @@ class _ParcoursCard extends StatelessWidget {
                       color: AppColors.textGrey,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                ],
-                // Duration hidden here (requested).
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: AppColors.primaryBlue.withOpacity(0.08),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        AppColors.accentRed,
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      if (parcours.distanceKm != null) ...[
+                        const Icon(Icons.route,
+                            size: 16, color: AppColors.primaryBlue),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${parcours.distanceKm!.toStringAsFixed(1)} km',
+                          style: const TextStyle(
+                            fontFamily: 'Gabarito',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.textGrey,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      // Duration hidden here (requested).
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor:
+                                AppColors.primaryBlue.withOpacity(0.08),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              AppColors.accentRed,
+                            ),
+                            minHeight: 8,
+                          ),
+                        ),
                       ),
-                      minHeight: 8,
-                    ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '$treated / $total',
+                        style: const TextStyle(
+                          fontFamily: 'Gabarito',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '$treated / $total',
-                  style: const TextStyle(
-                    fontFamily: 'Gabarito',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.primaryBlue,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

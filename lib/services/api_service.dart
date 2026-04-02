@@ -156,4 +156,15 @@ class ApiService {
       throw Exception('Erreur envoi GPS');
     }
   }
+
+  static Future<void> deleteParcours(String parcoursId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/parcours/$parcoursId/'),
+    );
+
+    // DRF default is 204 No Content, but we accept 200 for safety.
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Erreur suppression parcours');
+    }
+  }
 }
