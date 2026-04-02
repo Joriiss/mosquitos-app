@@ -40,6 +40,11 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
   double? _lastLongitude;
   bool _trackingStarted = false;
 
+  // Live polyline representing the recorded path during this mission.
+  PolylineAnnotationManager? _polylineManager;
+  PolylineAnnotation? _pathAnnotation;
+  final List<Position> _trackPositions = [];
+
   Future<void> _recenter() async {
     if (_mapboxMap == null) return;
     if (currentLatitude == null || currentLongitude == null) return;
@@ -118,6 +123,10 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
     _distanceKm = 0;
     _distanceText = '0 m';
 
+    _trackPositions
+      ..clear()
+      ..add(Position(position.longitude, position.latitude));
+
     if (_mapboxMap != null) {
       await _mapboxMap!.setCamera(
         CameraOptions(
@@ -143,14 +152,14 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
       currentLatitude = pos.latitude;
       currentLongitude = pos.longitude;
 
-      if (_mapboxMap == null) return;
-
-      // Accumulate distance only when not paused.
       if (_lastLatitude != null && _lastLongitude != null) {
-        if (_isPaused) {
-          // Update last position to avoid a jump when resuming.
-          _lastLatitude = pos.latitude;
-          _lastLongitude = pos.longitude;
+        final nextPoint = Position(pos.longitude, pos.latitude);
+
+        if (_trackPositions.isEmpty) {
+          _trackPositions.add(nextPoint);
+        } else if (_isPaused) {
+          // Keep the polyline endpoint in sync, but do not add new segments.
+          _trackPositions[_trackPositions.length - 1] = nextPoint;
         } else {
           final segmentMeters = _haversineMeters(
             _lastLatitude!,
@@ -162,14 +171,21 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
           // Ignore tiny movements / GPS jitter.
           const minSegmentMeters = 2.0;
           if (segmentMeters >= minSegmentMeters) {
+            _trackPositions.add(nextPoint);
             _distanceKm += segmentMeters / 1000.0;
             _distanceText = _formatDistance(_distanceKm);
             setState(() {});
+          } else {
+            // Update last point without extending the path.
+            _trackPositions[_trackPositions.length - 1] = nextPoint;
           }
-
-          _lastLatitude = pos.latitude;
-          _lastLongitude = pos.longitude;
         }
+
+        // Update last reference position to avoid jump when resuming.
+        _lastLatitude = pos.latitude;
+        _lastLongitude = pos.longitude;
+
+        await _syncPathPolyline();
       }
 
       try {
@@ -213,6 +229,36 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
     return '${distanceKm.toStringAsFixed(2)} km';
   }
 
+  Future<void> _setupPolyline() async {
+    if (_mapboxMap == null) return;
+    if (_polylineManager != null) return;
+
+    _polylineManager =
+        await _mapboxMap!.annotations.createPolylineAnnotationManager();
+    await _syncPathPolyline();
+  }
+
+  Future<void> _syncPathPolyline() async {
+    if (_polylineManager == null) return;
+    if (_trackPositions.length < 2) return;
+
+    final lineString = LineString(coordinates: _trackPositions);
+
+    if (_pathAnnotation == null) {
+      _pathAnnotation = await _polylineManager!.create(
+        PolylineAnnotationOptions(
+          geometry: lineString,
+          lineColor: AppColors.primaryBlue.value,
+          lineWidth: 4.0,
+        ),
+      );
+      return;
+    }
+
+    _pathAnnotation!.geometry = lineString;
+    await _polylineManager!.update(_pathAnnotation!);
+  }
+
   @override
   void dispose() {
     _positionSub?.cancel();
@@ -246,6 +292,7 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
               );
 
               await _ensureLocationAndFollow();
+              await _setupPolyline();
             },
           ),
           Positioned(

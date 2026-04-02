@@ -315,20 +315,7 @@ class _ParcoursCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                 ],
-                if (parcours.durationMin != null) ...[
-                  const Icon(Icons.access_time,
-                      size: 16, color: AppColors.primaryBlue),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${parcours.durationMin} min',
-                    style: const TextStyle(
-                      fontFamily: 'Gabarito',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.textGrey,
-                    ),
-                  ),
-                ],
+                // Duration hidden here (requested).
               ],
             ),
             const SizedBox(height: 12),
