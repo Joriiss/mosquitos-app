@@ -40,6 +40,8 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
   double? _lastLongitude;
   bool _trackingStarted = false;
 
+  int _nextPointNumber = 1;
+
   // Live polyline representing the recorded path during this mission.
   PolylineAnnotationManager? _polylineManager;
   PolylineAnnotation? _pathAnnotation;
@@ -122,6 +124,7 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
     _trackingStarted = true;
     _distanceKm = 0;
     _distanceText = '0 m';
+    _nextPointNumber = 1;
 
     _trackPositions
       ..clear()
@@ -468,16 +471,22 @@ class _NewCartographyPageState extends State<NewCartographyPage> {
                   if (currentLatitude == null || currentLongitude == null) {
                     return;
                   }
+                  final k = _nextPointNumber;
 
-                  showDialog(
+                  showDialog<bool>(
                     context: context,
                     builder: (_) => PointModal(
                       isEdit: false,
+                      defaultName: 'Point #$k',
                       latitude: currentLatitude!,
                       longitude: currentLongitude!,
                       parcoursId: widget.parcoursId,
                     ),
-                  );
+                  ).then((created) {
+                    if (created == true && mounted) {
+                      setState(() => _nextPointNumber++);
+                    }
+                  });
                 },
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,

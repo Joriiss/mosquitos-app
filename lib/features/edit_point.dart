@@ -17,6 +17,7 @@ class PointModal extends StatefulWidget {
   final double latitude;
   final double longitude;
   final String? parcoursId;
+  final String? defaultName;
 
   const PointModal({
     super.key,
@@ -26,6 +27,7 @@ class PointModal extends StatefulWidget {
     required this.latitude,
     required this.longitude,
     this.parcoursId,
+    this.defaultName,
   });
 
   @override
@@ -105,7 +107,7 @@ Future<void> _uploadImage(File image) async {
     super.initState();
 
     nameController = TextEditingController(
-      text: widget.point?.name ?? '',
+      text: widget.point?.name ?? widget.defaultName ?? '',
     );
 
     commentController = TextEditingController(
