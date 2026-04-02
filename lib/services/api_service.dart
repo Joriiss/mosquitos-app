@@ -137,6 +137,19 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> optimizeParcours(
+        String parcoursId) async {
+      final response = await http.get(
+        Uri.parse('$baseUrl/parcours/$parcoursId/optimize/'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Erreur optimisation parcours: ${response.body}');
+      }
+
+      return jsonDecode(response.body);
+    }
+
   static Future<void> sendTrack({
     required String parcoursId,
     required double latitude,
