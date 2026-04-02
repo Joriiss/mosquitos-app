@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:mosquitos_app/features/point_history.dart';
 import 'package:mosquitos_app/models/intervention_model.dart';
 import 'package:mosquitos_app/models/point_model.dart';
@@ -37,9 +41,65 @@ class _PointModalState extends State<PointModal> {
 
   Set<String> selectedTags = {};
 
+  File? _selectedImage;
+  bool _isUploading = false;
+  String? _photoUrl;
+  
   List<Label> apiLabels = [];
   String? selectedLabelId;
+Future<void> _pickImage() async {
+  final source = await showModalBottomSheet<ImageSource>(
+    context: context,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_library, color: AppColors.primaryBlue),
+            title: const Text("Choisir depuis la galerie"),
+            onTap: () => Navigator.pop(context, ImageSource.gallery),
+          ),
+          ListTile(
+            leading: const Icon(Icons.camera_alt, color: AppColors.primaryBlue),
+            title: const Text("Prendre une photo"),
+            onTap: () => Navigator.pop(context, ImageSource.camera),
+          ),
+        ],
+      ),
+    ),
+  );
 
+  if (source == null) return; // l'utilisateur a fermé sans choisir
+
+  final picker = ImagePicker();
+  final picked = await picker.pickImage(
+    source: source, // ← galerie ou caméra selon le choix
+    imageQuality: 80,
+  );
+  if (picked != null) {
+    setState(() => _selectedImage = File(picked.path));
+    await _uploadImage(_selectedImage!);
+  }
+}
+Future<void> _uploadImage(File image) async {
+  setState(() => _isUploading = true);
+  try {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('https://ton-api.com/api/points/upload-photo/'),
+    );
+    request.files.add(
+      await http.MultipartFile.fromPath('photo', image.path),
+    );
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+    final json = jsonDecode(body);
+    // json['photo_url'] → l'URL retournée par Django
+    setState(() => _photoUrl = json['photo_url']);
+  } finally {
+    setState(() => _isUploading = false);
+  }
+}
   @override
   void initState() {
     super.initState();
@@ -96,10 +156,11 @@ class _PointModalState extends State<PointModal> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _header(),
-                const SizedBox(height: 16),
-                if (widget.isEdit) _photoPreview(),
-                const SizedBox(height: 16),
+                 const SizedBox(height: 16),
                 _nameField(),
+                const SizedBox(height: 16),
+                 _photoPreview(),
+                 _photoPicker(),
                 const SizedBox(height: 16),
                 _tagsSection(),
                 const SizedBox(height: 16),
@@ -108,7 +169,7 @@ class _PointModalState extends State<PointModal> {
                 const SizedBox(height: 16),
                 _commentField(),
                 const SizedBox(height: 16),
-                if (!widget.isEdit) _photoPicker(),
+                
                 if (widget.isEdit) _historyButton(),
                 const SizedBox(height: 16),
                 _submitButton(),
@@ -144,8 +205,10 @@ class _PointModalState extends State<PointModal> {
     return TextField(
       controller: nameController,
       enabled: !widget.isEdit,
+       style: const TextStyle(color: AppColors.primaryBlue),
       decoration: InputDecoration(
         labelText: "Nom",
+        labelStyle: const TextStyle(color: AppColors.primaryBlue),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -166,6 +229,19 @@ class _PointModalState extends State<PointModal> {
         return ChoiceChip(
           label: Text(tag.name),
           selected: isSelected,
+          selectedColor: AppColors.primaryBlue,
+          backgroundColor: AppColors.white,
+          labelStyle: TextStyle(
+            color: isSelected ? AppColors.white : Colors.black,
+            fontFamily: 'Gabarito',
+          ),
+          checkmarkColor: AppColors.white,
+          side: BorderSide(
+            color: isSelected ? AppColors.primaryBlue : Colors.grey.shade300,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           onSelected: (val) {
             if (!val) return;
 
@@ -180,30 +256,84 @@ class _PointModalState extends State<PointModal> {
   }
 
   Widget _treatedSwitch() {
-    return SwitchListTile(
-      title: const Text("Point déjà traité ?"),
-      value: isTreated,
-      onChanged: (val) {
-        setState(() {
-          isTreated = val;
-        });
-      },
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text("Point déjà traité ?", style: TextStyle(color: AppColors.primaryBlue)),
+        Switch(
+          value: isTreated,
+          trackOutlineColor:WidgetStateProperty.resolveWith<Color>((states) {
+            return AppColors.white;
+          }),
+          thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+            return AppColors.white;
+          }),
+          trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppColors.primaryBlue;
+            }
+            return Colors.grey.shade300;
+          }),
+          onChanged: (val) {
+            setState(() {
+              isTreated = val;
+            });
+          },
+        ),
+      ],
     );
   }
-
   Widget _dateInfo() {
     return const Text("Dernier traitement");
   }
 
-  Widget _photoPicker() {
-    return OutlinedButton(
-      onPressed: () {},
-      child: const Text("Ajouter une photo"),
-    );
-  }
+Widget _photoPicker() {
+  return Column(
+    children: [
+      if (_selectedImage != null)
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(_selectedImage!, height: 150, fit: BoxFit.cover),
+        ),
+      const SizedBox(height: 8),
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(  style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.primary,
+          side: BorderSide(color: AppColors.primaryBlue),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+          onPressed: _isUploading ? null : _pickImage,
+          icon: _isUploading
+              ? const SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.upload, color: AppColors.primaryBlue),
+          label: Text(_isUploading ? "Upload en cours..." : "Ajouter une photo",style: TextStyle(
+            color: AppColors.primaryBlue,
+          ),),
+        ),
+      ),
+    ],
+  );
+}
 
   Widget _photoPreview() {
-    return const SizedBox(height: 120);
+   if (widget.point?.photoUrl == null || widget.point!.photoUrl!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return ClipRRect(
+       
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        widget.point!.photoUrl!,
+        height: 150,
+        width: double.infinity,
+        fit: BoxFit.cover, )
+    );
   }
 
   Widget _commentField() {
@@ -212,17 +342,45 @@ class _PointModalState extends State<PointModal> {
       maxLines: 4,
       decoration: InputDecoration(
         labelText: "Commentaires",
+         labelStyle: const TextStyle(color: AppColors.primaryBlue),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),
+        filled: true,
+        fillColor: AppColors.white,
       ),
     );
   }
 
   Widget _historyButton() {
-    return OutlinedButton(
-      onPressed: () {},
-      child: const Text("Voir l’historique"),
+    return SizedBox(
+        width: double.infinity,
+        child:  OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.primary,
+          side: BorderSide(color: AppColors.primaryBlue),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      onPressed: () {
+         
+
+      showDialog(
+          context: context,
+          builder: (_) => PointHistoryDialog(
+            point: widget.point!,
+            interventions: widget.interventions,
+          ),
+        );
+      },
+      icon: const Icon(Icons.history),
+      label: const Text("Voir l’historique" , 
+        style: TextStyle(
+            color: AppColors.primaryBlue,
+          ),
+        ),
+      ),
     );
   }
 
@@ -230,6 +388,14 @@ class _PointModalState extends State<PointModal> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryBlue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
         onPressed: isSubmitting
             ? null
             : () async {
@@ -284,7 +450,26 @@ class _PointModalState extends State<PointModal> {
               },
         child: isSubmitting
             ? const CircularProgressIndicator(color: Colors.white)
-            : const Text("Ajouter"),
+            : Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.isEdit ? "Enregistrer" : "Ajouter"),
+            const SizedBox(width: 8),
+            if (widget.isEdit)
+              Image(
+                image: AssetImage('assets/icons/edit.png'),
+                height: 22,
+                width: 22,
+              )
+            else
+              Image(
+                image: AssetImage('assets/icons/plus-icon.png'),
+                height: 22,
+                width: 22,
+              ),
+          ],
+        ),
       ),
     );
   }

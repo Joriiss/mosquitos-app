@@ -1,5 +1,10 @@
 PODS:
   - Flutter (1.0.0)
+  - geolocator_apple (1.2.0):
+    - Flutter
+    - FlutterMacOS
+  - image_picker_ios (0.0.1):
+    - Flutter
   - mapbox_maps_flutter (2.20.1):
     - Flutter
     - MapboxMaps (= 11.20.2)
@@ -16,6 +21,8 @@ PODS:
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
+  - geolocator_apple (from `.symlinks/plugins/geolocator_apple/darwin`)
+  - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - mapbox_maps_flutter (from `.symlinks/plugins/mapbox_maps_flutter/ios`)
 
 SPEC REPOS:
@@ -28,11 +35,17 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
+  geolocator_apple:
+    :path: ".symlinks/plugins/geolocator_apple/darwin"
+  image_picker_ios:
+    :path: ".symlinks/plugins/image_picker_ios/ios"
   mapbox_maps_flutter:
     :path: ".symlinks/plugins/mapbox_maps_flutter/ios"
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  geolocator_apple: 66b711889fd333205763b83c9dcf0a57a28c7afd
+  image_picker_ios: 4f2f91b01abdb52842a8e277617df877e40f905b
   mapbox_maps_flutter: d514808eb3b2ff6865c242f0176bf3fa934cf8ce
   MapboxCommon: 7a40d88a3257c0efe4b82daec742f45e29a1df89
   MapboxCoreMaps: c29c7be0e11aeaf2e9e8b3f521661a1436f5ad9a

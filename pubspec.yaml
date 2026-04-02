@@ -36,6 +36,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   geolocator: ^13.0.1
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -60,6 +61,7 @@ flutter:
     - assets/images/logo.png
     - assets/icons/login-icon.png
     - assets/icons/plus-icon.png
+    - assets/icons/edit.png
     - assets/icons/gps-puck.png
     - assets/icons/time.png
     - assets/icons/length.png
