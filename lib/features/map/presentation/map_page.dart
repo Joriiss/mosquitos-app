@@ -133,7 +133,15 @@ class _MapPageState extends State<MapPage> {
 
     var usedMapboxGeometry = false;
     try {
-      final data = await ApiService.optimizeParcours(widget.parcoursId);
+      if (_currentLatitude == null || _currentLongitude == null) {
+        return;
+      }
+
+      final data = await ApiService.optimizeParcours(
+        _currentLatitude!,
+        _currentLongitude!,
+        widget.parcoursId,
+      );
       if (!mounted) return;
 
       final positions =
