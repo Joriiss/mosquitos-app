@@ -249,6 +249,17 @@ class ApiService {
     return decoded;
   }
 
+  static Future<void> deletePoint(String pointId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/points/$pointId/'),
+      headers: _headers(),
+    );
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Erreur suppression point: ${response.body}');
+    }
+  }
+
   static Future<void> markPointTreated(String pointId) async {
     final response = await http.post(
       Uri.parse('$baseUrl/points/$pointId/mark_treated/'),

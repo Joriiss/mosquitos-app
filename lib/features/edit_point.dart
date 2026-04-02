@@ -7,6 +7,9 @@ import 'package:mosquitos_app/models/point_model.dart';
 import 'package:mosquitos_app/theme/app_colors.dart';
 import 'package:mosquitos_app/services/api_service.dart';
 
+/// [Navigator.pop] value from [PointModal] when the point was deleted on the server.
+const String kPointModalDeleted = 'point_modal_deleted';
+
 class PointModal extends StatefulWidget {
   final bool isEdit;
   final Point? point;
@@ -40,6 +43,7 @@ class _PointModalState extends State<PointModal> {
   
   bool isTreated = false;
   bool isSubmitting = false;
+  bool _isDeleting = false;
 
   Set<String> selectedTags = {};
   List<File> _selectedImages = [];
@@ -173,6 +177,10 @@ Future<void> _pickImage() async {
                 const SizedBox(height: 16),
                 
                 if (widget.isEdit) _historyButton(),
+                if (widget.isEdit) ...[
+                  const SizedBox(height: 16),
+                  _deleteButton(),
+                ],
                 const SizedBox(height: 16),
                 _submitButton(),
               ],
@@ -412,6 +420,86 @@ Widget _photoPreview() {
     );
   }
 
+  Future<void> _confirmAndDeletePoint() async {
+    final id = widget.point?.id;
+    if (id == null) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer ce point ?'),
+        content: const Text(
+          'Cette action est définitive. Le point sera retiré de la cartographie.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red.shade700),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _isDeleting = true);
+    try {
+      await ApiService.deletePoint(id);
+      if (!mounted) return;
+      Navigator.of(context).pop(kPointModalDeleted);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Impossible de supprimer le point')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+      }
+    }
+  }
+
+  Widget _deleteButton() {
+    if (widget.point?.id == null) return const SizedBox.shrink();
+
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.red.shade700,
+          side: BorderSide(color: Colors.red.shade400),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        onPressed: (isSubmitting || _isDeleting) ? null : _confirmAndDeletePoint,
+        icon: _isDeleting
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.red.shade700,
+                ),
+              )
+            : Icon(Icons.delete_outline, color: Colors.red.shade700),
+        label: Text(
+          _isDeleting ? 'Suppression…' : 'Supprimer le point',
+          style: TextStyle(
+            color: Colors.red.shade700,
+            fontFamily: 'Gabarito',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _historyButton() {
     return SizedBox(
         width: double.infinity,
@@ -456,7 +544,7 @@ Widget _photoPreview() {
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        onPressed: isSubmitting
+        onPressed: (isSubmitting || _isDeleting)
             ? null
             : () async {
                 if (selectedLabelId == null ||

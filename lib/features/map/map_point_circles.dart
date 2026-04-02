@@ -103,7 +103,7 @@ Future<void> openPointDetailFromMap({
       return Intervention.fromJson(m);
     }).toList();
 
-    final saved = await showDialog<bool>(
+    final saved = await showDialog<dynamic>(
       context: context,
       builder: (ctx) => PointModal(
         isEdit: true,
@@ -114,7 +114,8 @@ Future<void> openPointDetailFromMap({
         parcoursId: parcoursId,
       ),
     );
-    if (context.mounted && saved == true) {
+    if (context.mounted &&
+        (saved == true || saved == kPointModalDeleted)) {
       await onClosedRefresh?.call();
     }
   } catch (_) {

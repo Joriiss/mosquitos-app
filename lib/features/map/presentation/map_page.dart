@@ -214,7 +214,7 @@ class _MapPageState extends State<MapPage> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                _parcours?.name ?? 'Cartographie Sans Nom',
+                _parcours?.name ?? '',
                 style: const TextStyle(
                   fontFamily: 'Gabarito',
                   fontSize: 18,
