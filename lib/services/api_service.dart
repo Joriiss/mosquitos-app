@@ -78,8 +78,14 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getParcours() async {
+    final uri = Uri.parse('$baseUrl/parcours/').replace(
+      queryParameters: <String, String>{
+        // Avoid stale list payloads if any intermediary caches GET responses.
+        '_': DateTime.now().millisecondsSinceEpoch.toString(),
+      },
+    );
     final response = await http.get(
-      Uri.parse('$baseUrl/parcours/'),
+      uri,
       headers: _headers(),
     );
 

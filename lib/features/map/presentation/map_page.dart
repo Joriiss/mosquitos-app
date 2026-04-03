@@ -27,14 +27,28 @@ class _MapPageState extends State<MapPage> {
   PolylineAnnotationManager? _routePolylineManager;
   Cancelable? _circleTapCancel;
   StreamSubscription<geo.Position>? _positionSub;
+  Timer? _missionTimer;
   double? _currentLatitude;
   double? _currentLongitude;
+  double? _lastLatForDistance;
+  double? _lastLngForDistance;
 
   bool _isPaused = false;
   Parcours? _parcours;
   int _nextPointNumber = 1;
   /// Set from [ApiService.optimizeParcours] when the walking route is drawn.
   int? _optimizedDurationMin;
+  double? _optimizedDistanceKm;
+  /// Active walking time (does not advance while [_isPaused]).
+  int _elapsedActiveSeconds = 0;
+  /// Sum of GPS segments while not paused (meters).
+  double _distanceWalkedMeters = 0;
+
+  int? get _targetDurationMin =>
+      _optimizedDurationMin ?? _parcours?.durationMin;
+
+  double? get _targetDistanceKm =>
+      _optimizedDistanceKm ?? _parcours?.distanceKm;
 
   Future<void> _ensureCircleManager() async {
     if (_mapboxMap == null) return;
@@ -84,6 +98,7 @@ class _MapPageState extends State<MapPage> {
         _parcours = Parcours.fromJson(json);
         _nextPointNumber = (_parcours?.totalPoints ?? 0) + 1;
         _optimizedDurationMin = null;
+        _optimizedDistanceKm = null;
       });
 
       await _ensureCircleManager();
@@ -148,8 +163,10 @@ class _MapPageState extends State<MapPage> {
           parseGeoJsonLineStringPositions(data['geometry']);
       if (positions != null && positions.length >= 2) {
         final dur = data['duration_min'];
+        final dist = data['distance_km'];
         setState(() {
           _optimizedDurationMin = dur is num ? dur.round() : null;
+          _optimizedDistanceKm = dist is num ? dist.toDouble() : null;
         });
         await drawLine(positions);
         usedMapboxGeometry = true;
@@ -165,6 +182,7 @@ class _MapPageState extends State<MapPage> {
 
     setState(() {
       _optimizedDurationMin = null;
+      _optimizedDistanceKm = null;
     });
     await drawLine(fallback);
 
@@ -180,10 +198,62 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  String get _durationText {
-    final durationMin =
-        _optimizedDurationMin ?? _parcours?.durationMin;
-    return '${durationMin ?? 0} min';
+  String _formatElapsedClock(int totalSeconds) {
+    final h = totalSeconds ~/ 3600;
+    final m = (totalSeconds % 3600) ~/ 60;
+    final s = totalSeconds % 60;
+    if (h > 0) {
+      return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    }
+    return '${m.toString()}:${s.toString().padLeft(2, '0')}';
+  }
+
+  String get _timeProgressLabel {
+    final elapsed = _formatElapsedClock(_elapsedActiveSeconds);
+    final target = _targetDurationMin;
+    if (target == null || target <= 0) {
+      return elapsed;
+    }
+    return '$elapsed / $target min';
+  }
+
+  String get _distanceProgressLabel {
+    final walkedKm = _distanceWalkedMeters / 1000.0;
+    final walkedStr = walkedKm.toStringAsFixed(2);
+    final total = _targetDistanceKm;
+    if (total == null || total <= 0) {
+      return '$walkedStr km';
+    }
+    return '$walkedStr / ${total.toStringAsFixed(2)} km';
+  }
+
+  void _ensureMissionTimerStarted() {
+    if (_missionTimer != null) return;
+    _missionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _isPaused) return;
+      setState(() => _elapsedActiveSeconds++);
+    });
+  }
+
+  void _onGpsPosition(geo.Position pos) {
+    if (_isPaused) return;
+    _currentLatitude = pos.latitude;
+    _currentLongitude = pos.longitude;
+    final prevLat = _lastLatForDistance;
+    final prevLng = _lastLngForDistance;
+    if (prevLat != null && prevLng != null) {
+      final segment = geo.Geolocator.distanceBetween(
+        prevLat,
+        prevLng,
+        pos.latitude,
+        pos.longitude,
+      );
+      if (segment > 0.5 && segment < 800) {
+        setState(() => _distanceWalkedMeters += segment);
+      }
+    }
+    _lastLatForDistance = pos.latitude;
+    _lastLngForDistance = pos.longitude;
   }
 
   Future<void> _recenter() async {
@@ -225,6 +295,9 @@ class _MapPageState extends State<MapPage> {
 
     _currentLatitude = position.latitude;
     _currentLongitude = position.longitude;
+    _lastLatForDistance = position.latitude;
+    _lastLngForDistance = position.longitude;
+    _ensureMissionTimerStarted();
 
     if (_mapboxMap != null) {
       await _mapboxMap!.setCamera(
@@ -244,15 +317,12 @@ class _MapPageState extends State<MapPage> {
         accuracy: geo.LocationAccuracy.high,
         distanceFilter: 1, // meters before update
       ),
-    ).listen((geo.Position pos) {
-      if (_isPaused) return;
-      _currentLatitude = pos.latitude;
-      _currentLongitude = pos.longitude;
-    });
+    ).listen(_onGpsPosition);
   }
 
   @override
   void dispose() {
+    _missionTimer?.cancel();
     _circleTapCancel?.cancel();
     _positionSub?.cancel();
     super.dispose();
@@ -311,38 +381,75 @@ class _MapPageState extends State<MapPage> {
             ),
           ),
           Positioned(
-            top: 80,
+            top: 84,
             left: 16,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Image.asset(
-                        'assets/icons/time.png',
-                        height: 18,
-                        width: 18,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _durationText,
-                        style: const TextStyle(
-                          fontFamily: 'Gabarito',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.primaryBlue,
+                Material(
+                  color: Colors.white,
+                  elevation: 3,
+                  shadowColor: Colors.black26,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/icons/time.png',
+                          height: 18,
+                          width: 18,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Text(
+                          _timeProgressLabel,
+                          style: const TextStyle(
+                            fontFamily: 'Gabarito',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.primaryBlue,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Material(
+                  color: Colors.white,
+                  elevation: 3,
+                  shadowColor: Colors.black26,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/icons/length.png',
+                          height: 18,
+                          width: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _distanceProgressLabel,
+                          style: const TextStyle(
+                            fontFamily: 'Gabarito',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.primaryBlue,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

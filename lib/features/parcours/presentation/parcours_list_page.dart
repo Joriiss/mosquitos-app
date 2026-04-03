@@ -5,6 +5,7 @@ import '../../map/presentation/map_page.dart';
 import 'new_cartography_page.dart';
 import '../domain/parcours.dart';
 import '../../../services/api_service.dart';
+import '../../auth/presentation/login_page.dart';
 
 class ParcoursListPage extends StatefulWidget {
   const ParcoursListPage({super.key});
@@ -19,6 +20,16 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
 
   final Set<String> _selectedParcoursIds = <String>{};
   bool get _selectionMode => _selectedParcoursIds.isNotEmpty;
+
+  Future<void> _logout() async {
+    await ApiService.logout();
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => const LoginPage(),
+      ),
+    );
+  }
 
   void _toggleSelected(String parcoursId) {
     setState(() {
@@ -80,12 +91,20 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
   Future<void> loadParcours() async {
     try {
       final data = await ApiService.getParcours();
+      if (!mounted) return;
+
+      final list = <Parcours>[];
+      for (final e in data) {
+        if (e is! Map) continue;
+        list.add(Parcours.fromJson(Map<String, dynamic>.from(e)));
+      }
 
       setState(() {
-        parcoursList = data.map((e) => Parcours.fromJson(e)).toList();
+        parcoursList = list;
         loading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         loading = false;
       });
@@ -99,15 +118,19 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
       appBar: AppBar(
         backgroundColor: AppColors.white,
         elevation: 0,
-        actions: _selectionMode
-            ? [
-                IconButton(
-                  tooltip: 'Supprimer',
-                  icon: const Icon(Icons.delete, color: AppColors.accentRed),
-                  onPressed: _deleteSelectedParcours,
-                ),
-              ]
-            : null,
+        actions: [
+          if (_selectionMode)
+            IconButton(
+              tooltip: 'Supprimer',
+              icon: const Icon(Icons.delete, color: AppColors.accentRed),
+              onPressed: _deleteSelectedParcours,
+            ),
+          IconButton(
+            tooltip: 'Déconnexion',
+            icon: const Icon(Icons.logout, color: AppColors.primaryBlue),
+            onPressed: _logout,
+          ),
+        ],
         title: const Text(
           'Vos cartographies existantes',
           style: TextStyle(
@@ -124,35 +147,37 @@ class _ParcoursListPageState extends State<ParcoursListPage> {
           : Column(
               children: [
                 Expanded(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    itemBuilder: (context, index) {
-                      final parcours = parcoursList[index];
-                      return _ParcoursCard(
-                        parcours: parcours,
-                        isSelected: _selectedParcoursIds.contains(parcours.id),
-                        onTap: () {
-                          if (_selectionMode) {
-                            _toggleSelected(parcours.id);
-                          } else {
-                            Navigator.of(context)
-                                .push(
+                  child: RefreshIndicator(
+                    onRefresh: loadParcours,
+                    child: ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      itemBuilder: (context, index) {
+                        final parcours = parcoursList[index];
+                        return _ParcoursCard(
+                          parcours: parcours,
+                          isSelected:
+                              _selectedParcoursIds.contains(parcours.id),
+                          onTap: () async {
+                            if (_selectionMode) {
+                              _toggleSelected(parcours.id);
+                              return;
+                            }
+                            await Navigator.of(context).push<void>(
                               MaterialPageRoute(
                                 builder: (_) => MapPage(
                                   parcoursId: parcours.id,
                                 ),
                               ),
-                            )
-                                .then((_) {
-                              if (mounted) loadParcours();
-                            });
-                          }
-                        },
-                        onLongPress: () => _toggleSelected(parcours.id),
-                      );
-                    },
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemCount: parcoursList.length,
+                            );
+                            if (mounted) await loadParcours();
+                          },
+                          onLongPress: () => _toggleSelected(parcours.id),
+                        );
+                      },
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemCount: parcoursList.length,
+                    ),
                   ),
                 ),
                 Padding(

@@ -21,15 +21,26 @@ class Parcours {
   factory Parcours.fromJson(Map<String, dynamic> json) {
     final parcoursPoints = (json['parcours_points'] as List?) ?? [];
 
-    int resolved = 0;
+    // Deduplicate by point id (same point can be linked twice in DB); counts must match map markers.
+    final seenIds = <String>{};
+    var resolved = 0;
+    var uniqueTotal = 0;
+
     for (final raw in parcoursPoints) {
-      if (raw is! Map<String, dynamic>) continue;
-      final p = raw['point'];
-      if (p is! Map<String, dynamic>) continue;
-      final treated = p['is_treated'] == true;
-      final label = p['label'];
+      if (raw is! Map) continue;
+      final row = Map<String, dynamic>.from(raw);
+      final p = row['point'];
+      if (p is! Map) continue;
+      final pointMap = Map<String, dynamic>.from(p);
+      final id = pointMap['id']?.toString() ?? '';
+      if (id.isEmpty || seenIds.contains(id)) continue;
+      seenIds.add(id);
+      uniqueTotal++;
+
+      final treated = pointMap['is_treated'] == true;
+      final label = pointMap['label'];
       final isTreatable =
-          label is Map<String, dynamic> && label['is_treatable'] == true;
+          label is Map && Map<String, dynamic>.from(label)['is_treatable'] == true;
       if (treated || !isTreatable) {
         resolved++;
       }
@@ -41,7 +52,7 @@ class Parcours {
       createdAt: DateTime.parse(json['created_at']),
       distanceKm: _parseDouble(json['distance_km']),
       durationMin: _parseInt(json['duration_min']),
-      totalPoints: parcoursPoints.length,
+      totalPoints: uniqueTotal,
       resolvedCount: resolved,
     );
   }
